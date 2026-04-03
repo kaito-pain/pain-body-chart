@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>痛みボディーチャート</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+    .app { max-width: 500px; margin: 0 auto; padding: 0.75rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ===== ID入力画面 ===== */
+    .id-screen {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      gap: 28px; padding: 2rem 1rem;
+    }
+    .id-logo { font-size: 24px; font-weight: 600; color: #1a1a1a; text-align: center; }
+    .id-sub { font-size: 14px; color: #666; text-align: center; line-height: 1.7; margin-top: 8px; }
+    .id-form { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+    .id-label { font-size: 14px; font-weight: 500; color: #555; }
+    .id-input {
+      width: 100%; padding: 16px; font-size: 20px;
+      border: 1.5px solid #ddd; border-radius: 12px;
+      background: #fff; color: #1a1a1a;
+      text-align: center; letter-spacing: 3px;
+      transition: border-color 0.15s;
+    }
+    .id-input:focus { outline: none; border-color: #7F77DD; }
+    .id-input::placeholder { letter-spacing: 0; color: #aaa; font-size: 15px; }
+    .btn-primary {
+      width: 100%; padding: 16px;
+      background: #7F77DD; color: white;
+      border: none; border-radius: 12px;
+      font-size: 17px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #534AB7; }
+    .btn-primary:disabled { background: #ccc; color: #888; cursor: not-allowed; }
+    .id-note { font-size: 12px; color: #999; text-align: center; line-height: 1.7; }
+
+    /* ===== チャート画面 ===== */
+    .chart-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 10px;
+      padding: 8px 0;
+    }
+    .chart-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+    .patient-badge {
+      font-size: 12px; background: #f0f0f0;
+      border: 1px solid #e0e0e0; border-radius: 20px;
+      padding: 4px 12px; color: #555;
+    }
+    .patient-badge span { font-weight: 600; color: #534AB7; }
+    .back-btn {
+      font-size: 12px; color: #999;
+      background: none; border: none; cursor: pointer;
+      text-decoration: underline; padding: 4px;
+    }
+    .subtitle { font-size: 13px; color: #888; text-align: center; margin-bottom: 10px; }
+    .charts-row { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+    .chart-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+    .view-label { font-size: 12px; font-weight: 500; color: #888; text-align: center; }
+
+    /* タップ領域 */
+    .tap {
+      fill: rgba(180,176,230,0.20);
+      stroke: rgba(127,119,221,0.40);
+      stroke-width: 4; cursor: pointer;
+      transition: fill 0.15s;
+    }
+    .tap:hover { fill: rgba(127,119,221,0.35); }
+    .tap.sel { fill: rgba(127,119,221,0.55); stroke: #3C3489; stroke-width: 6; }
+    .lbl {
+      font-size: 18px; font-weight: 600;
+      fill: #3C3489; pointer-events: none;
+      text-anchor: middle; dominant-baseline: middle;
+    }
+    .lbl.sel { fill: #EEEDFE; }
+
+    /* ===== 部位カード ===== */
+    .section-title { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 10px; }
+    .no-sel { font-size: 14px; color: #999; padding: 16px 0; text-align: center; }
+    .part-card {
+      background: #fff; border: 1px solid #e8e8e8;
+      border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .part-card-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 14px;
+    }
+    .part-name { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+    .remove-btn {
+      background: none; border: 1px solid #e0e0e0;
+      border-radius: 50%; width: 34px; height: 34px;
+      color: #999; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .remove-btn:hover { border-color: #E24B4A; color: #E24B4A; }
+    .vas-bar-track {
+      width: 100%; height: 10px;
+      background: #f0f0f0; border-radius: 5px; margin-bottom: 10px;
+    }
+    .vas-bar-fill { height: 10px; border-radius: 5px; background: #7F77DD; transition: width 0.08s; }
+    input[type=range] { width: 100%; height: 44px; cursor: pointer; accent-color: #7F77DD; }
+    .vas-endpoints { display: flex; justify-content: space-between; margin-top: 4px; }
+    .vas-end-label { font-size: 12px; color: #999; }
+
+    /* ===== サマリー ===== */
+    .summary-card { background: #f8f8f6; border-radius: 8px; padding: 12px 14px; }
+    .result-row {
+      display: flex; justify-content: space-between;
+      align-items: center; font-size: 14px;
+      padding: 6px 0; border-bottom: 1px solid #eee;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-part { color: #666; }
+    .result-mini-track { width: 70px; height: 6px; background: #e0e0e0; border-radius: 3px; }
+    .result-mini-fill { height: 6px; border-radius: 3px; background: #7F77DD; }
+
+    .submit-btn {
+      width: 100%; margin-top: 14px; padding: 16px;
+      background: #7F77DD; color: white;
+      border: none; border-radius: 12px;
+      font-size: 17px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .submit-btn:hover { background: #534AB7; }
+    .submit-btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
+    .sending-msg { text-align: center; font-size: 14px; color: #888; margin-top: 10px; }
+    .error-msg {
+      text-align: center; font-size: 13px; color: #c0392b;
+      margin-top: 10px; padding: 12px;
+      background: #fdf0f0; border-radius: 8px;
+      border: 1px solid #f5c6c6;
+    }
+
+    /* ===== 完了画面 ===== */
+    .done-screen {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      gap: 20px; padding: 2rem 1rem; text-align: center;
+    }
+    .done-icon {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: #EEEDFE;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px;
+    }
+    .done-title { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+    .done-sub { font-size: 14px; color: #666; line-height: 1.8; }
+    .done-detail {
+      background: #f8f8f6; border-radius: 10px;
+      padding: 14px 18px; font-size: 13px; color: #666;
+      width: 100%; text-align: left; line-height: 2.0;
+    }
+    .done-detail strong { color: #1a1a1a; }
+    .btn-secondary {
+      width: 100%; padding: 14px;
+      background: #fff; color: #1a1a1a;
+      border: 1px solid #ddd; border-radius: 12px;
+      font-size: 15px; font-weight: 500; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: #f5f5f0; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== 画面①：患者ID入力 ===== -->
+  <div id="screen-id" class="screen active">
+    <div class="id-screen">
+      <div>
+        <div class="id-logo">痛みボディーチャート</div>
+        <div class="id-sub">記録を始める前に<br>患者IDを入力してください</div>
+      </div>
+      <div class="id-form">
+        <div class="id-label">患者ID</div>
+        <input class="id-input" id="patient-id-input" type="text"
+          placeholder="例：PT-001" maxlength="20" autocomplete="off"
+          autocorrect="off" autocapitalize="off" spellcheck="false"/>
+        <button class="btn-primary" id="start-btn" disabled>開始する</button>
+      </div>
+      <div class="id-note">入力したIDは記録データと紐付けられます。<br>正確に入力してください。</div>
+    </div>
+  </div>
+
+  <!-- ===== 画面②：ボディチャート ===== -->
+  <div id="screen-chart" class="screen">
+    <div class="chart-header">
+      <div class="chart-title">痛みボディーチャート</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="patient-badge">ID: <span id="display-id"></span></div>
+        <button class="back-btn" onclick="goBack()">戻る</button>
+      </div>
+    </div>
+    <div class="subtitle">痛みのある部位をタップしてください</div>
+
+    <div class="charts-row">
+      <!-- 前面 -->
+      <div class="chart-wrap">
+        <div class="view-label">前面</div>
+        <svg width="148" height="400" viewBox="0 0 604.502 1628.762">
+          <path fill="#D3D1C7" stroke="#888780" stroke-width="3" d="M307.71,934.044c-2.887-37.612,3.116-111.464-6.141-106.729c0,0-1.513,6.585-1.773,8.642c-1.752,13.994-0.121,74.406-2.134,96.522c0,0-7.163,57.876-11.151,74.107c-3.988,16.228-11.166,115.227-19.144,139.574c-7.976,24.345-16.75,56.8-8.774,81.958c7.976,25.157,16.752,67.352,8.774,105.492c-7.976,38.14-16.75,91.288-11.964,118.069c3.521,19.706,4.786,38.546,7.978,42.603c3.188,4.057,0,12.169,0,22.721c0,10.547,1.594,33.271-1.995,41.793c0,6.082,5.183,22.719,2.394,30.427c-2.793,7.711,0,12.174-3.591,15.417c-3.589,3.247-9.572,11.77-22.733,8.525c-7.978-2.438-8.375-8.525-7.178-9.742c1.195-1.216-4.389-0.402-4.389-0.402c-2.78,5.181-12.76,6.868-17.548-0.406c-0.796-1.218-3.587,4.461-9.969,3.243s-3.589-4.055-3.589-4.055s-8.377,0.404-10.37-4.463c-0.399,1.216-4.387,2.839-7.579-0.406c-3.19-3.245-2.791-13.793-1.594-19.07c1.195-5.277,6.796-14.401,8.774-17.854c2.791-4.867,13.161-23.533,12.762-28.806c-0.248-3.263,0.796-27.998,3.19-34.081c2.394-6.089,2.793-13.391,2.793-21.505c0-8.116,1.995-53.965-13.959-110.363c-15.954-56.396-23.531-83.984-23.928-122.938c-0.399-38.952,17.147-62.483,6.777-121.312c-10.368-58.836-14.755-97.785-15.952-101.439c-1.197-3.647-7.675-87.088-7.675-87.088c-0.914-90.865,2.12-75.593,3.35-108.574c2.353-63.252,1.051-52.022,10.05-88.612c1.577-12.158,2.454-23.04,4.031-35.203c0.657-5.071,2.01-11.418,2.669-16.489c9.196-31.653,9.142-25.304,5.191-54.251c-2.61-19.17,0.658-16.691,2.614-36.464c0.344-3.505,3.794-65.532-2.78-99.005c-4.466-13.066-8.932-26.134-13.4-39.197h-0.557c0.201,32.151-11.049,55.538-16.752,82.933c-1.867,13.001-2.392,23.885-4.297,36.877c-0.585,4.014-1.713,6.857-2.315,10.995c-2.596,17.861,2.82,24.968-3.437,57.216c-7.242,37.317-22.927,69.907-30.15,107.358c-1.197,6.198-0.553,12.864-0.316,18.911c0.585,4.031,1.615,6.33,2.475,10.552c1.195,5.861,1.78,13.168,2.863,18.818c1.334,6.942,1.438,15.31,1.664,23.435c0.207,7.346,1.037,12.54,0.288,21.87c-0.218,2.72-0.033,36.328-3.134,48.688c-1.434,5.7-4.692,5.273-6.077,4.279c-5.716-7.654-0.615-25.119-6.28-43.599c-0.559,0.38-0.559,0.046-1.118,0.425c0.084,4.047-0.667,9.273-0.179,15.482c0.779,9.977,0.378,14.142,0.07,18.034c-0.832,10.572-1.344,19.719-3.924,25.218c-1.395,2.974-5.2,5.59-8.669,1.478c-1.937-3.302-2.208-8.173-2.411-15.058c-0.878-30.054-0.969-20.294-1.334-26.969c-0.388-7.183-0.61-12.768-0.61-12.768c-0.89-0.236-1.494-0.354-2.345-0.022c-2.167,19.698-0.178,15.719-2.96,39.445c-0.491,4.187-0.139,12.028-1.225,17.079c-2.229,10.363-11.671,9.05-12.444,1.027c-0.265-2.74-0.886-5.687-1.238-8.086c-0.38-2.592-0.164-6.26-0.254-8.989c-0.139-4.209-0.565-7.888-0.888-12.069c-0.373-4.839,2.084-17.895,0.023-27.551c-0.026,0-1.142,0-1.116,0c-0.734,4.359-2.245,10.954-3.969,19.445c-0.265,1.309-0.399,3.632-0.681,4.975c-1.549,7.394-1.393,11.575-2.166,16.148c-1.214,7.224,0.053,8.318-2.505,13.124c-2.791,5.249-7.135,2.857-8.296,0.08c-1.801-4.311-2.814-11.342-2.795-19.975c0.037-15.995,2.716-19.356,2.825-40.619c0.023-4.404,0.267-8.277-0.282-12.349v2.129c-2.435,4.109-3.373,8.129-7.816,10.222c-2.213,0.79-4.001,1.246-5.663,0.365c-1.624-0.853-2.718-0.523-2.119-3.736c0.461-2.47,1.59-5.861,2.014-8.907c0.638-4.582,0.555-8.698,1.641-13.506c0.632-2.789,2.368-6.204,3.203-8.885c1.366-4.384,1.958-10.449,3.156-12.473c0.903-1.533,3.004-3.975,4.31-5.698c0.346-0.457,8.944-13.182,12.286-17.574c3.356-4.409,5.699-8.14,5.699-8.14c0.051-11.746,3.059-18.778,2.08-30.076c-1.692-19.557-0.495,1.76-2.339-121.232c4.78-68.261,11.045-49.621,17.136-111.518c4.058-41.052,4.798-56.274,7.364-64.797c2.452-8.147,6.34-29.092,5.657-43.675c-0.459-9.801-0.45-14.221-1.543-20.477c-2.05-11.754-1.431-42.739,11.725-69.299c11.477-23.175,27.318-34.048,49.629-43.289c15.531-6.434,14.433-2.79,42.978-18.213c17.074-9.227,57.814-33.258,65.621-50.863c0.124-16.319-0.366-14.443,0.009-29.778c0,0-3.213-13.298-4.53-22.591c-6.854-0.074-10.769-6.449-13.127-14.318c-2.094-6.98-1.877-19.262-1.918-20.898c-0.163-6.367-0.441-12.45,4.995-14.77c1.445-0.341,1.701-0.376,2.351-0.208c0.836,0.213,1.278,1.131,2.115,1.344c-1.056-33.236,4.238-59.246,25.686-73.844c38.147-25.962,84.194-4.385,96.595,31.244c4.15,11.926,4.212,28.343,2.791,42.601h0.557c1.212-1.02,1.445-1.628,3.877-1.237c4.303,1.889,5.591,6.919,5.712,15.964c0.177,13.445-0.6,22.432-9.367,31.903c-2.189,2.366-4.282,2.09-7.477,3.358c-0.207,4.645-2.703,18.616-2.703,18.616s-1.703,28.168-0.651,31.938c4.364,15.563,55.746,47.859,85.792,61.08c17.748,7.814,48.444,11.768,69.031,44.574c13.863,22.079,19.151,53.497,15.704,74.476c-1.369,8.304-2.896,28.95-0.455,42.944c10.918,54.033,5.22,16.283,12.421,88.953c3.703,37.295,4.626,32.485,12.068,67.063c0.877,4.079,0.794,6.836,1.346,12.065c1.663,15.866,5.62,30.424,2.492,104.929c-2.799,66.377-3.96,53.491-0.943,68.354c1.208,5.992-3.063,8.431,14.057,30.796c1.5,1.958,3.088,4.873,4.581,6.495c1.694,1.845,3.269,2.407,4.457,4.93c1.314,2.802,0.723,5.179,1.38,8.273c0.807,3.74,1.647,6.727,4.105,12.349c1.013,2.327-0.075,8.781,0.653,13.461c0.41,2.637,1.961,5.16,2.388,7.739c0.002,0.022,0.939,1.3,0.762,2.483c-0.256,1.687-2.004,3.38-5.381,2.653c-6.446-1.04-7.101-6.232-10.611-10.035c0.08,5.339-0.595,7.281,1.099,29.728c0.427,5.661,3.893,30.336-1.199,40.461c-1.756,3.495-5.721,2.996-7.803,0.51c-5.565-6.642-0.373-10.685-8.925-51.36c-1.116-5.271-2.349-0.61-2.349-0.61c-0.16,25.464,1.666,13.068-0.25,31.836c-0.942,9.126-0.375,27.282-5.445,28.639c-4.658,1.253-7.366-2.318-8.181-5.416c-2.122-8.108-1.956-18.062-2.014-19.063c-0.154-2.729-1.026-9.119-1.135-11.913c-0.365-9.214,0.497-12.819-1.302-26.917c-0.143-1.174-1.462-1.35-1.462-1.35c-1.961,1.819-0.851,8.454-1.186,11.551c-3.15,28.922,0.442,32.063-4.351,43.031c-1.628,3.721-6.48,3.881-8.433,0.491c-1.442-2.512-1.526-5.726-1.705-6.352c-1.756-6.089-1.334-12.805-1.863-18.569c-0.354-3.81-0.926-4.884-0.856-7.958c0.233-10.437,2.309-16.964,0.412-27.651c-0.373-0.187-0.747-0.378-1.118-0.564c-0.745,1.157-0.459,2.19-0.832,3.716c-1.212,4.928-1.404,12.154-2.204,17.859c-1.259,9.017,0.911,20.359-4.784,22.732c-2.791-0.191-2.603-0.38-4.274-2.084c-5.376-13.557-1.805-31.088-3.117-47.522c-1.586-19.77-0.064-18.681,0.35-25.185c1.917-31.072,0.966-16.394,3.205-32.181c2.262-15.944,3.054-13.863,4.133-21.228c2.059-14.053-0.666-20.851-4.999-37.704c-0.491-1.921-1.163-3.497-1.622-5.483c-2.089-8.967-5.855-19.003-8.234-27.605c-19.318-69.827-14.488-54.078-17.153-72.648c-1.286-8.943-1.133-5.494-0.113-35.667c-0.809-5.598-2.364-10.439-3.177-16.035c-1.797-12.391-2.844-25.539-4.639-37.927c-5.657-26.218-15.956-48.792-16.193-80.094c-0.369,0.189-0.743,0.378-1.116,0.569c-2.808,11.112-8.142,23.815-12.783,35.175c-2.405,5.894-0.418,6.326-2.522,15.378c-2.886,12.424-4.145,63.823-0.885,88.047c0.927,6.952,1.197,1.809,2.793,20.448c0.284,3.354-0.164,5.8-0.448,9.638c-0.233,3.137-0.224,7.706-0.638,10.272c-1.468,9.087-3.239,15.532-1.15,24.966c2.02,9.109,2.677,4.255,8.751,34.942c0.994,5.012,0.751,7.619,1.466,13.365c0.565,4.546,2.078,12.258,2.836,16.265c0.745,3.916,1.063,8.954,1.788,12.814c1.568,8.348,8.083,29.891,8.46,62.064c0.704,59.53,4.476,55.504,4.024,102.244c-0.614,56.92-8.584,147.539-14.226,174.122c-7.577,35.704-12.762,81.961-9.967,90.885c2.787,8.926,12.363,79.119,6.775,111.58c-5.582,32.455-34.296,139.976-33.897,161.887c0.397,21.911-5.919,41.448,0.397,55.584c3.99,8.926,1.199,27.188,2.793,32.459c1.596,5.275,3.589,20.288,9.173,24.751c5.584,4.465,15.154,27.184,13.161,34.489c-1.995,7.302-5.185,12.983-10.37,10.956c-4.385,4.869-9.971,3.651-11.166,3.245c-1.197-0.406-4.387,8.926-13.959,1.624c-2.392,3.649-5.582,6.488-12.365,3.649c-6.779-2.839-4.784-3.649-4.784-3.649l-5.185,0.81c0,0,0.796,10.55-8.776,10.55c-9.57,0-23.529-6.493-22.731-17.04c0.796-10.552-0.798-24.753,3.988-39.358c-4.786-10.144-5.185-26.372-2.791-34.085c2.392-7.704,0-17.85-0.401-23.123c-0.399-5.277,7.579-37.33,7.579-46.254c0-8.93,0.798-90.483-4.786-102.654c-5.584-12.169-12.762-60.049-4.387-93.316c0,0,10.11-48.282,10.37-60.455c0.397-18.666-20.341-75.874-20.341-98.593c0-22.723-13.56-109.147-15.154-115.64C315.225,977.372,307.71,934.044,307.71,934.044"/>
+          <!-- 前面部位 -->
+          <ellipse class="tap" data-id="face" data-name="顔" cx="302" cy="60" rx="80" ry="50"/><text class="lbl" data-id="face" x="302" y="60">顔</text>
+          <ellipse class="tap" data-id="mouth" data-name="口・顎" cx="302" cy="138" rx="58" ry="34"/><text class="lbl" data-id="mouth" x="302" y="138">口・顎</text>
+          <rect class="tap" data-id="chest" data-name="胸部" x="178" y="270" width="248" height="190" rx="8"/><text class="lbl" data-id="chest" x="302" y="366">胸部</text>
+          <rect class="tap" data-id="abdomen" data-name="腹部" x="185" y="500" width="232" height="220" rx="8"/><text class="lbl" data-id="abdomen" x="302" y="612">腹部</text>
+          <ellipse class="tap" data-id="groin" data-name="陰部" cx="302" cy="760" rx="60" ry="34"/><text class="lbl" data-id="groin" x="302" y="760">陰部</text>
+          <ellipse class="tap" data-id="r_shoulder" data-name="右肩" cx="112" cy="305" rx="54" ry="54"/><text class="lbl" data-id="r_shoulder" x="112" y="305">右肩</text>
+          <ellipse class="tap" data-id="l_shoulder" data-name="左肩" cx="492" cy="305" rx="54" ry="54"/><text class="lbl" data-id="l_shoulder" x="492" y="305">左肩</text>
+          <rect class="tap" data-id="r_upper" data-name="右上腕" x="54" y="370" width="112" height="160" rx="8"/><text class="lbl" data-id="r_upper" x="110" y="452">右上腕</text>
+          <rect class="tap" data-id="l_upper" data-name="左上腕" x="438" y="370" width="112" height="160" rx="8"/><text class="lbl" data-id="l_upper" x="494" y="452">左上腕</text>
+          <ellipse class="tap" data-id="r_elbow" data-name="右肘" cx="110" cy="548" rx="48" ry="40"/><text class="lbl" data-id="r_elbow" x="110" y="548">右肘</text>
+          <ellipse class="tap" data-id="l_elbow" data-name="左肘" cx="494" cy="548" rx="48" ry="40"/><text class="lbl" data-id="l_elbow" x="494" y="548">左肘</text>
+          <rect class="tap" data-id="r_fore" data-name="右前腕" x="46" y="596" width="100" height="175" rx="8"/><text class="lbl" data-id="r_fore" x="96" y="686">右前腕</text>
+          <rect class="tap" data-id="l_fore" data-name="左前腕" x="458" y="596" width="100" height="175" rx="8"/><text class="lbl" data-id="l_fore" x="508" y="686">左前腕</text>
+          <ellipse class="tap" data-id="r_hand" data-name="右手" cx="88" cy="820" rx="56" ry="46"/><text class="lbl" data-id="r_hand" x="88" y="820">右手</text>
+          <ellipse class="tap" data-id="l_hand" data-name="左手" cx="516" cy="820" rx="56" ry="46"/><text class="lbl" data-id="l_hand" x="516" y="820">左手</text>
+          <ellipse class="tap" data-id="r_hip" data-name="右股関節" cx="220" cy="860" rx="52" ry="52"/><text class="lbl" data-id="r_hip" x="220" y="860">右股関節</text>
+          <ellipse class="tap" data-id="l_hip" data-name="左股関節" cx="384" cy="860" rx="52" ry="52"/><text class="lbl" data-id="l_hip" x="384" y="860">左股関節</text>
+          <rect class="tap" data-id="r_thigh" data-name="右大腿" x="180" y="918" width="110" height="200" rx="8"/><text class="lbl" data-id="r_thigh" x="235" y="1020">右大腿</text>
+          <rect class="tap" data-id="l_thigh" data-name="左大腿" x="316" y="918" width="110" height="200" rx="8"/><text class="lbl" data-id="l_thigh" x="371" y="1020">左大腿</text>
+          <rect class="tap" data-id="r_knee" data-name="右膝" x="183" y="1122" width="104" height="78" rx="8"/><text class="lbl" data-id="r_knee" x="235" y="1163">右膝</text>
+          <rect class="tap" data-id="l_knee" data-name="左膝" x="319" y="1122" width="104" height="78" rx="8"/><text class="lbl" data-id="l_knee" x="371" y="1163">左膝</text>
+          <rect class="tap" data-id="r_leg" data-name="右下腿" x="186" y="1206" width="104" height="265" rx="8"/><text class="lbl" data-id="r_leg" x="238" y="1341">右下腿</text>
+          <rect class="tap" data-id="l_leg" data-name="左下腿" x="320" y="1206" width="104" height="265" rx="8"/><text class="lbl" data-id="l_leg" x="372" y="1341">左下腿</text>
+          <ellipse class="tap" data-id="r_foot" data-name="右足部" cx="230" cy="1558" rx="98" ry="58"/><text class="lbl" data-id="r_foot" x="230" y="1558">右足</text>
+          <ellipse class="tap" data-id="l_foot" data-name="左足部" cx="376" cy="1558" rx="98" ry="58"/><text class="lbl" data-id="l_foot" x="376" y="1558">左足</text>
+        </svg>
+      </div>
+
+      <!-- 後面 -->
+      <div class="chart-wrap">
+        <div class="view-label">後面</div>
+        <svg width="148" height="400" viewBox="0 0 604.502 1628.762">
+          <g transform="translate(604.502,0) scale(-1,1)">
+            <path fill="#D3D1C7" stroke="#888780" stroke-width="3" d="M307.71,934.044c-2.887-37.612,3.116-111.464-6.141-106.729c0,0-1.513,6.585-1.773,8.642c-1.752,13.994-0.121,74.406-2.134,96.522c0,0-7.163,57.876-11.151,74.107c-3.988,16.228-11.166,115.227-19.144,139.574c-7.976,24.345-16.75,56.8-8.774,81.958c7.976,25.157,16.752,67.352,8.774,105.492c-7.976,38.14-16.75,91.288-11.964,118.069c3.521,19.706,4.786,38.546,7.978,42.603c3.188,4.057,0,12.169,0,22.721c0,10.547,1.594,33.271-1.995,41.793c0,6.082,5.183,22.719,2.394,30.427c-2.793,7.711,0,12.174-3.591,15.417c-3.589,3.247-9.572,11.77-22.733,8.525c-7.978-2.438-8.375-8.525-7.178-9.742c1.195-1.216-4.389-0.402-4.389-0.402c-2.78,5.181-12.76,6.868-17.548-0.406c-0.796-1.218-3.587,4.461-9.969,3.243s-3.589-4.055-3.589-4.055s-8.377,0.404-10.37-4.463c-0.399,1.216-4.387,2.839-7.579-0.406c-3.19-3.245-2.791-13.793-1.594-19.07c1.195-5.277,6.796-14.401,8.774-17.854c2.791-4.867,13.161-23.533,12.762-28.806c-0.248-3.263,0.796-27.998,3.19-34.081c2.394-6.089,2.793-13.391,2.793-21.505c0-8.116,1.995-53.965-13.959-110.363c-15.954-56.396-23.531-83.984-23.928-122.938c-0.399-38.952,17.147-62.483,6.777-121.312c-10.368-58.836-14.755-97.785-15.952-101.439c-1.197-3.647-7.675-87.088-7.675-87.088c-0.914-90.865,2.12-75.593,3.35-108.574c2.353-63.252,1.051-52.022,10.05-88.612c1.577-12.158,2.454-23.04,4.031-35.203c0.657-5.071,2.01-11.418,2.669-16.489c9.196-31.653,9.142-25.304,5.191-54.251c-2.61-19.17,0.658-16.691,2.614-36.464c0.344-3.505,3.794-65.532-2.78-99.005c-4.466-13.066-8.932-26.134-13.4-39.197h-0.557c0.201,32.151-11.049,55.538-16.752,82.933c-1.867,13.001-2.392,23.885-4.297,36.877c-0.585,4.014-1.713,6.857-2.315,10.995c-2.596,17.861,2.82,24.968-3.437,57.216c-7.242,37.317-22.927,69.907-30.15,107.358c-1.197,6.198-0.553,12.864-0.316,18.911c0.585,4.031,1.615,6.33,2.475,10.552c1.195,5.861,1.78,13.168,2.863,18.818c1.334,6.942,1.438,15.31,1.664,23.435c0.207,7.346,1.037,12.54,0.288,21.87c-0.218,2.72-0.033,36.328-3.134,48.688c-1.434,5.7-4.692,5.273-6.077,4.279c-5.716-7.654-0.615-25.119-6.28-43.599c-0.559,0.38-0.559,0.046-1.118,0.425c0.084,4.047-0.667,9.273-0.179,15.482c0.779,9.977,0.378,14.142,0.07,18.034c-0.832,10.572-1.344,19.719-3.924,25.218c-1.395,2.974-5.2,5.59-8.669,1.478c-1.937-3.302-2.208-8.173-2.411-15.058c-0.878-30.054-0.969-20.294-1.334-26.969c-0.388-7.183-0.61-12.768-0.61-12.768c-0.89-0.236-1.494-0.354-2.345-0.022c-2.167,19.698-0.178,15.719-2.96,39.445c-0.491,4.187-0.139,12.028-1.225,17.079c-2.229,10.363-11.671,9.05-12.444,1.027c-0.265-2.74-0.886-5.687-1.238-8.086c-0.38-2.592-0.164-6.26-0.254-8.989c-0.139-4.209-0.565-7.888-0.888-12.069c-0.373-4.839,2.084-17.895,0.023-27.551c-0.026,0-1.142,0-1.116,0c-0.734,4.359-2.245,10.954-3.969,19.445c-0.265,1.309-0.399,3.632-0.681,4.975c-1.549,7.394-1.393,11.575-2.166,16.148c-1.214,7.224,0.053,8.318-2.505,13.124c-2.791,5.249-7.135,2.857-8.296,0.08c-1.801-4.311-2.814-11.342-2.795-19.975c0.037-15.995,2.716-19.356,2.825-40.619c0.023-4.404,0.267-8.277-0.282-12.349v2.129c-2.435,4.109-3.373,8.129-7.816,10.222c-2.213,0.79-4.001,1.246-5.663,0.365c-1.624-0.853-2.718-0.523-2.119-3.736c0.461-2.47,1.59-5.861,2.014-8.907c0.638-4.582,0.555-8.698,1.641-13.506c0.632-2.789,2.368-6.204,3.203-8.885c1.366-4.384,1.958-10.449,3.156-12.473c0.903-1.533,3.004-3.975,4.31-5.698c0.346-0.457,8.944-13.182,12.286-17.574c3.356-4.409,5.699-8.14,5.699-8.14c0.051-11.746,3.059-18.778,2.08-30.076c-1.692-19.557-0.495,1.76-2.339-121.232c4.78-68.261,11.045-49.621,17.136-111.518c4.058-41.052,4.798-56.274,7.364-64.797c2.452-8.147,6.34-29.092,5.657-43.675c-0.459-9.801-0.45-14.221-1.543-20.477c-2.05-11.754-1.431-42.739,11.725-69.299c11.477-23.175,27.318-34.048,49.629-43.289c15.531-6.434,14.433-2.79,42.978-18.213c17.074-9.227,57.814-33.258,65.621-50.863c0.124-16.319-0.366-14.443,0.009-29.778c0,0-3.213-13.298-4.53-22.591c-6.854-0.074-10.769-6.449-13.127-14.318c-2.094-6.98-1.877-19.262-1.918-20.898c-0.163-6.367-0.441-12.45,4.995-14.77c1.445-0.341,1.701-0.376,2.351-0.208c0.836,0.213,1.278,1.131,2.115,1.344c-1.056-33.236,4.238-59.246,25.686-73.844c38.147-25.962,84.194-4.385,96.595,31.244c4.15,11.926,4.212,28.343,2.791,42.601h0.557c1.212-1.02,1.445-1.628,3.877-1.237c4.303,1.889,5.591,6.919,5.712,15.964c0.177,13.445-0.6,22.432-9.367,31.903c-2.189,2.366-4.282,2.09-7.477,3.358c-0.207,4.645-2.703,18.616-2.703,18.616s-1.703,28.168-0.651,31.938c4.364,15.563,55.746,47.859,85.792,61.08c17.748,7.814,48.444,11.768,69.031,44.574c13.863,22.079,19.151,53.497,15.704,74.476c-1.369,8.304-2.896,28.95-0.455,42.944c10.918,54.033,5.22,16.283,12.421,88.953c3.703,37.295,4.626,32.485,12.068,67.063c0.877,4.079,0.794,6.836,1.346,12.065c1.663,15.866,5.62,30.424,2.492,104.929c-2.799,66.377-3.96,53.491-0.943,68.354c1.208,5.992-3.063,8.431,14.057,30.796c1.5,1.958,3.088,4.873,4.581,6.495c1.694,1.845,3.269,2.407,4.457,4.93c1.314,2.802,0.723,5.179,1.38,8.273c0.807,3.74,1.647,6.727,4.105,12.349c1.013,2.327-0.075,8.781,0.653,13.461c0.41,2.637,1.961,5.16,2.388,7.739c0.002,0.022,0.939,1.3,0.762,2.483c-0.256,1.687-2.004,3.38-5.381,2.653c-6.446-1.04-7.101-6.232-10.611-10.035c0.08,5.339-0.595,7.281,1.099,29.728c0.427,5.661,3.893,30.336-1.199,40.461c-1.756,3.495-5.721,2.996-7.803,0.51c-5.565-6.642-0.373-10.685-8.925-51.36c-1.116-5.271-2.349-0.61-2.349-0.61c-0.16,25.464,1.666,13.068-0.25,31.836c-0.942,9.126-0.375,27.282-5.445,28.639c-4.658,1.253-7.366-2.318-8.181-5.416c-2.122-8.108-1.956-18.062-2.014-19.063c-0.154-2.729-1.026-9.119-1.135-11.913c-0.365-9.214,0.497-12.819-1.302-26.917c-0.143-1.174-1.462-1.35-1.462-1.35c-1.961,1.819-0.851,8.454-1.186,11.551c-3.15,28.922,0.442,32.063-4.351,43.031c-1.628,3.721-6.48,3.881-8.433,0.491c-1.442-2.512-1.526-5.726-1.705-6.352c-1.756-6.089-1.334-12.805-1.863-18.569c-0.354-3.81-0.926-4.884-0.856-7.958c0.233-10.437,2.309-16.964,0.412-27.651c-0.373-0.187-0.747-0.378-1.118-0.564c-0.745,1.157-0.459,2.19-0.832,3.716c-1.212,4.928-1.404,12.154-2.204,17.859c-1.259,9.017,0.911,20.359-4.784,22.732c-2.791-0.191-2.603-0.38-4.274-2.084c-5.376-13.557-1.805-31.088-3.117-47.522c-1.586-19.77-0.064-18.681,0.35-25.185c1.917-31.072,0.966-16.394,3.205-32.181c2.262-15.944,3.054-13.863,4.133-21.228c2.059-14.053-0.666-20.851-4.999-37.704c-0.491-1.921-1.163-3.497-1.622-5.483c-2.089-8.967-5.855-19.003-8.234-27.605c-19.318-69.827-14.488-54.078-17.153-72.648c-1.286-8.943-1.133-5.494-0.113-35.667c-0.809-5.598-2.364-10.439-3.177-16.035c-1.797-12.391-2.844-25.539-4.639-37.927c-5.657-26.218-15.956-48.792-16.193-80.094c-0.369,0.189-0.743,0.378-1.116,0.569c-2.808,11.112-8.142,23.815-12.783,35.175c-2.405,5.894-0.418,6.326-2.522,15.378c-2.886,12.424-4.145,63.823-0.885,88.047c0.927,6.952,1.197,1.809,2.793,20.448c0.284,3.354-0.164,5.8-0.448,9.638c-0.233,3.137-0.224,7.706-0.638,10.272c-1.468,9.087-3.239,15.532-1.15,24.966c2.02,9.109,2.677,4.255,8.751,34.942c0.994,5.012,0.751,7.619,1.466,13.365c0.565,4.546,2.078,12.258,2.836,16.265c0.745,3.916,1.063,8.954,1.788,12.814c1.568,8.348,8.083,29.891,8.46,62.064c0.704,59.53,4.476,55.504,4.024,102.244c-0.614,56.92-8.584,147.539-14.226,174.122c-7.577,35.704-12.762,81.961-9.967,90.885c2.787,8.926,12.363,79.119,6.775,111.58c-5.582,32.455-34.296,139.976-33.897,161.887c0.397,21.911-5.919,41.448,0.397,55.584c3.99,8.926,1.199,27.188,2.793,32.459c1.596,5.275,3.589,20.288,9.173,24.751c5.584,4.465,15.154,27.184,13.161,34.489c-1.995,7.302-5.185,12.983-10.37,10.956c-4.385,4.869-9.971,3.651-11.166,3.245c-1.197-0.406-4.387,8.926-13.959,1.624c-2.392,3.649-5.582,6.488-12.365,3.649c-6.779-2.839-4.784-3.649-4.784-3.649l-5.185,0.81c0,0,0.796,10.55-8.776,10.55c-9.57,0-23.529-6.493-22.731-17.04c0.796-10.552-0.798-24.753,3.988-39.358c-4.786-10.144-5.185-26.372-2.791-34.085c2.392-7.704,0-17.85-0.401-23.123c-0.399-5.277,7.579-37.33,7.579-46.254c0-8.93,0.798-90.483-4.786-102.654c-5.584-12.169-12.762-60.049-4.387-93.316c0,0,10.11-48.282,10.37-60.455c0.397-18.666-20.341-75.874-20.341-98.593c0-22.723-13.56-109.147-15.154-115.64C315.225,977.372,307.71,934.044,307.71,934.044"/>
+          </g>
+          <!-- 後面部位 -->
+          <ellipse class="tap" data-id="head" data-name="頭" cx="302" cy="60" rx="80" ry="50"/><text class="lbl" data-id="head" x="302" y="60">頭</text>
+          <rect class="tap" data-id="neck" data-name="頸部" x="252" y="118" width="100" height="60" rx="8"/><text class="lbl" data-id="neck" x="302" y="148">頸部</text>
+          <rect class="tap" data-id="back" data-name="背部" x="178" y="270" width="248" height="190" rx="8"/><text class="lbl" data-id="back" x="302" y="366">背部</text>
+          <rect class="tap" data-id="lower_back" data-name="腰部" x="185" y="500" width="232" height="120" rx="8"/><text class="lbl" data-id="lower_back" x="302" y="562">腰部</text>
+          <rect class="tap" data-id="buttock" data-name="臀部" x="185" y="640" width="232" height="110" rx="8"/><text class="lbl" data-id="buttock" x="302" y="697">臀部</text>
+          <ellipse class="tap" data-id="anus" data-name="肛門" cx="302" cy="770" rx="60" ry="34"/><text class="lbl" data-id="anus" x="302" y="770">肛門</text>
+          <ellipse class="tap" data-id="l_shoulder" data-name="左肩" cx="112" cy="305" rx="54" ry="54"/><text class="lbl" data-id="l_shoulder" x="112" y="305">左肩</text>
+          <ellipse class="tap" data-id="r_shoulder" data-name="右肩" cx="492" cy="305" rx="54" ry="54"/><text class="lbl" data-id="r_shoulder" x="492" y="305">右肩</text>
+          <rect class="tap" data-id="l_upper" data-name="左上腕" x="54" y="370" width="112" height="160" rx="8"/><text class="lbl" data-id="l_upper" x="110" y="452">左上腕</text>
+          <rect class="tap" data-id="r_upper" data-name="右上腕" x="438" y="370" width="112" height="160" rx="8"/><text class="lbl" data-id="r_upper" x="494" y="452">右上腕</text>
+          <ellipse class="tap" data-id="l_elbow" data-name="左肘" cx="110" cy="548" rx="48" ry="40"/><text class="lbl" data-id="l_elbow" x="110" y="548">左肘</text>
+          <ellipse class="tap" data-id="r_elbow" data-name="右肘" cx="494" cy="548" rx="48" ry="40"/><text class="lbl" data-id="r_elbow" x="494" y="548">右肘</text>
+          <rect class="tap" data-id="l_fore" data-name="左前腕" x="46" y="596" width="100" height="175" rx="8"/><text class="lbl" data-id="l_fore" x="96" y="686">左前腕</text>
+          <rect class="tap" data-id="r_fore" data-name="右前腕" x="458" y="596" width="100" height="175" rx="8"/><text class="lbl" data-id="r_fore" x="508" y="686">右前腕</text>
+          <ellipse class="tap" data-id="l_hand" data-name="左手" cx="88" cy="820" rx="56" ry="46"/><text class="lbl" data-id="l_hand" x="88" y="820">左手</text>
+          <ellipse class="tap" data-id="r_hand" data-name="右手" cx="516" cy="820" rx="56" ry="46"/><text class="lbl" data-id="r_hand" x="516" y="820">右手</text>
+          <ellipse class="tap" data-id="l_hip" data-name="左股関節" cx="220" cy="900" rx="52" ry="52"/><text class="lbl" data-id="l_hip" x="220" y="900">左股関節</text>
+          <ellipse class="tap" data-id="r_hip" data-name="右股関節" cx="384" cy="900" rx="52" ry="52"/><text class="lbl" data-id="r_hip" x="384" y="900">右股関節</text>
+          <rect class="tap" data-id="l_thigh" data-name="左大腿" x="180" y="958" width="110" height="200" rx="8"/><text class="lbl" data-id="l_thigh" x="235" y="1060">左大腿</text>
+          <rect class="tap" data-id="r_thigh" data-name="右大腿" x="316" y="958" width="110" height="200" rx="8"/><text class="lbl" data-id="r_thigh" x="371" y="1060">右大腿</text>
+          <rect class="tap" data-id="l_knee" data-name="左膝" x="183" y="1162" width="104" height="78" rx="8"/><text class="lbl" data-id="l_knee" x="235" y="1203">左膝</text>
+          <rect class="tap" data-id="r_knee" data-name="右膝" x="319" y="1162" width="104" height="78" rx="8"/><text class="lbl" data-id="r_knee" x="371" y="1203">右膝</text>
+          <rect class="tap" data-id="l_leg" data-name="左下腿" x="186" y="1246" width="104" height="265" rx="8"/><text class="lbl" data-id="l_leg" x="238" y="1381">左下腿</text>
+          <rect class="tap" data-id="r_leg" data-name="右下腿" x="320" y="1246" width="104" height="265" rx="8"/><text class="lbl" data-id="r_leg" x="372" y="1381">右下腿</text>
+          <ellipse class="tap" data-id="l_foot" data-name="左足部" cx="230" cy="1558" rx="98" ry="58"/><text class="lbl" data-id="l_foot" x="230" y="1558">左足</text>
+          <ellipse class="tap" data-id="r_foot" data-name="右足部" cx="376" cy="1558" rx="98" ry="58"/><text class="lbl" data-id="r_foot" x="376" y="1558">右足</text>
+        </svg>
+      </div>
+    </div>
+
+    <div id="parts-section">
+      <div class="section-title">選択した部位</div>
+      <div id="parts-list"><p class="no-sel">部位をタップして選択してください</p></div>
+    </div>
+    <div id="results-section" style="display:none; margin-top:16px;">
+      <div class="section-title">記録サマリー</div>
+      <div class="summary-card" id="results-table"></div>
+      <button class="submit-btn" id="submit-btn">記録を送信する</button>
+      <div id="sending-msg" class="sending-msg" style="display:none;">送信中...</div>
+      <div id="error-msg" class="error-msg" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ===== 画面③：完了 ===== -->
+  <div id="screen-done" class="screen">
+    <div class="done-screen">
+      <div class="done-icon">✓</div>
+      <div class="done-title">記録が完了しました</div>
+      <div class="done-sub">データをスプレッドシートに送信しました。<br>ご協力ありがとうございました。</div>
+      <div class="done-detail" id="done-detail"></div>
+      <button class="btn-primary" onclick="restart()">新しい記録を始める</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxzPMWY-3gq747TplDoRrrEoZF2DeAYEHKAQ4tRvVPeA9QxRSxmRlPbMTQAhi_VNGSb/exec';
+var patientId = '';
+var state = {};
+
+// ID入力
+var idInput = document.getElementById('patient-id-input');
+var startBtn = document.getElementById('start-btn');
+idInput.addEventListener('input', function() {
+  startBtn.disabled = idInput.value.trim().length === 0;
+});
+idInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && idInput.value.trim().length > 0) startChart();
+});
+startBtn.addEventListener('click', startChart);
+
+function startChart() {
+  patientId = idInput.value.trim();
+  document.getElementById('display-id').textContent = patientId;
+  showScreen('screen-chart');
+}
+
+function goBack() {
+  if (Object.keys(state).length > 0) {
+    if (!confirm('入力中のデータが消えます。戻りますか？')) return;
+  }
+  state = {};
+  renderAll();
+  showScreen('screen-id');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+function syncUI(id) {
+  document.querySelectorAll('.tap[data-id="' + id + '"]').forEach(function(el) {
+    if (state[id]) el.classList.add('sel'); else el.classList.remove('sel');
+  });
+  document.querySelectorAll('.lbl[data-id="' + id + '"]').forEach(function(el) {
+    if (state[id]) el.classList.add('sel'); else el.classList.remove('sel');
+  });
+}
+
+function togglePart(id, name) {
+  if (state[id]) delete state[id]; else state[id] = { name: name, vas: 0 };
+  syncUI(id); renderAll();
+}
+
+function setVas(id, val) {
+  if (!state[id]) return;
+  state[id].vas = parseInt(val);
+  var bar = document.getElementById('bar-' + id);
+  if (bar) bar.style.width = val + '%';
+  renderSummary();
+}
+
+function removePart(id) { delete state[id]; syncUI(id); renderAll(); }
+
+function renderAll() {
+  var list = document.getElementById('parts-list');
+  var keys = Object.keys(state);
+  if (!keys.length) {
+    list.innerHTML = '<p class="no-sel">部位をタップして選択してください</p>';
+    document.getElementById('results-section').style.display = 'none';
+    return;
+  }
+  list.innerHTML = keys.map(function(id) {
+    var p = state[id];
+    return '<div class="part-card">' +
+      '<div class="part-card-header">' +
+        '<span class="part-name">' + p.name + '</span>' +
+        '<button class="remove-btn" onclick="removePart(\'' + id + '\')">×</button>' +
+      '</div>' +
+      '<div class="vas-bar-track"><div class="vas-bar-fill" id="bar-' + id + '" style="width:' + p.vas + '%"></div></div>' +
+      '<input type="range" min="0" max="100" step="1" value="' + p.vas + '" oninput="setVas(\'' + id + '\', this.value)"/>' +
+      '<div class="vas-endpoints">' +
+        '<span class="vas-end-label">痛みなし</span>' +
+        '<span class="vas-end-label">最大の痛み</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  renderSummary();
+  document.getElementById('results-section').style.display = 'block';
+}
+
+function renderSummary() {
+  var keys = Object.keys(state);
+  document.getElementById('results-table').innerHTML = keys.map(function(id) {
+    var p = state[id];
+    return '<div class="result-row">' +
+      '<span class="result-part">' + p.name + '</span>' +
+      '<div class="result-mini-track"><div class="result-mini-fill" style="width:' + p.vas + '%"></div></div>' +
+    '</div>';
+  }).join('');
+}
+
+document.querySelectorAll('.tap').forEach(function(el) {
+  el.addEventListener('click', function() { togglePart(el.dataset.id, el.dataset.name); });
+});
+
+// 送信
+document.getElementById('submit-btn').addEventListener('click', function() {
+  var keys = Object.keys(state);
+  if (!keys.length) return;
+
+  var btn = document.getElementById('submit-btn');
+  var sendingMsg = document.getElementById('sending-msg');
+  var errorMsg = document.getElementById('error-msg');
+
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+  sendingMsg.style.display = 'block';
+  errorMsg.style.display = 'none';
+
+  var now = new Date();
+  var recordedAt = now.toLocaleString('ja-JP');
+  var parts = keys.map(function(id) {
+    return { name: state[id].name, vas: state[id].vas };
+  });
+
+  var payload = { patientId: patientId, recordedAt: recordedAt, parts: parts };
+
+  fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function() {
+    var partSummary = parts.map(function(p) { return p.name + '（VAS ' + p.vas + '）'; }).join('、');
+    document.getElementById('done-detail').innerHTML =
+      '<strong>患者ID：</strong>' + patientId + '<br>' +
+      '<strong>記録日時：</strong>' + recordedAt + '<br>' +
+      '<strong>記録部位：</strong>' + partSummary;
+    showScreen('screen-done');
+  }).catch(function(err) {
+    errorMsg.textContent = '送信に失敗しました：' + err.message;
+    errorMsg.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '記録を送信する';
+    sendingMsg.style.display = 'none';
+  });
+});
+
+function restart() {
+  state = {};
+  idInput.value = '';
+  startBtn.disabled = true;
+  document.querySelectorAll('.tap').forEach(function(el) { el.classList.remove('sel'); });
+  document.querySelectorAll('.lbl').forEach(function(el) { el.classList.remove('sel'); });
+  renderAll();
+  showScreen('screen-id');
+}
+</script>
+</body>
+</html>
