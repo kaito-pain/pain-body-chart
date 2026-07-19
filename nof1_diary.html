@@ -2144,7 +2144,18 @@ function renderVTab2Multi(part, wxKey){
   var labelEl=document.getElementById('v2-month-label');
   if(labelEl) labelEl.textContent=periodLabel;
   var titleEl=document.getElementById('vc-wx-title');
-  if(titleEl) titleEl.textContent='🌡️ 全性質プロファイル ＋ '+wxKey;
+  if(titleEl){
+    var legHTML='';
+    if(v2PlotMode==='ts'){
+      legHTML='&nbsp;&nbsp;<span style="display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:400;color:#555;margin-left:8px;">'
+        +'<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f5a623;margin-right:3px;"></span>朝</span>'
+        +'<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3ab8c8;margin-right:3px;"></span>昼</span>'
+        +'<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7c6fd0;margin-right:3px;"></span>晩</span>'
+        +'<span style="color:#c0392b;margin-left:2px;">✦ 増悪時</span>'
+        +'</span>';
+    }
+    titleEl.innerHTML='🌡️ 全性質プロファイル ＋ '+wxKey+legHTML;
+  }
 
   var qNums=[];
   recs.forEach(function(r){
@@ -2212,7 +2223,7 @@ function renderVTab2Multi(part, wxKey){
   var cardW=Math.floor((Math.min(screenW,container.offsetWidth||screenW)-14*(cols+1))/cols);
   cardW=Math.max(220,Math.min(cardW,440));
   var SW=cardW,SH=Math.round(SW*0.65);
-  var SPL=38,SPR=48,SPT=36,SPB=46;
+  var SPL=38,SPR=48,SPT=36,SPB=34;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2304,25 +2315,7 @@ function renderVTab2Multi(part, wxKey){
     ctx2.fillStyle=col;ctx2.font='bold 10px sans-serif';ctx2.textAlign='right';
     ctx2.fillText('平均:'+avg,SPL+siW,SPT-10);
 
-    // 凡例
-    if(v2PlotMode==='ts'){
-      var legItems=[{l:'朝',c:'#f5a623'},{l:'昼',c:'#3ab8c8'},{l:'晩',c:'#7c6fd0'},{l:'増悪✦',c:'#c0392b'}];
-      var legY=SH-10;
-      var legSpacing=Math.floor(siW/4);
-      ctx2.font='9px sans-serif';
-      legItems.forEach(function(item,i){
-        var lx=SPL+i*legSpacing;
-        ctx2.beginPath();ctx2.arc(lx+4,legY-2,3,0,Math.PI*2);
-        ctx2.fillStyle=item.c;ctx2.fill();
-        ctx2.fillStyle='#555';ctx2.textAlign='left';
-        ctx2.fillText(item.l,lx+10,legY+2);
-      });
-    } else {
-      // 日平均モード：性質名を色で表示
-      ctx2.font='9px sans-serif';ctx2.textAlign='left';
-      ctx2.beginPath();ctx2.arc(SPL+4,SH-10,3,0,Math.PI*2);ctx2.fillStyle=col;ctx2.fill();
-      ctx2.fillStyle=col;ctx2.fillText('Q'+q+': '+SFMPQ2_S[q-1].slice(0,6),SPL+10,SH-6);
-    }
+    // 凡例はタイトル横に表示（グラフ内には描画しない）
 
     // ツールチップ
     cv._pts=pts;cv._xp2=xp2;cv._col=col;cv._wxKey=wxKey;
