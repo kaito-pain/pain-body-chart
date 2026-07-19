@@ -1757,7 +1757,7 @@ function doViewLogin(){
         return (order[a['時間帯']]||0)-(order[b['時間帯']]||0);
       });
       document.getElementById('viewer-pid').textContent='患者ID: '+pid+' （'+vRecords.length+'件）';
-      vInitSelects();renderVTab0();renderVTab1();renderVTab2();
+      vInitSelects();renderVTab2();
       showScreen('screen-viewer');
     })
     .catch(function(){alert('取得に失敗しました。');showScreen('screen-login');});
