@@ -2330,9 +2330,22 @@ function renderVTab2(){
       tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+p.dateStr+'</div>'
         +tsLines
         +(p.wx!=null?'<div style="color:rgba(200,60,60,0.9);">🌡️ '+canvas._wxKey+cn+': <strong>'+p.wx+'</strong></div>':'');
-      var left=canvas._xp(best.i)*(rect.width/canvas.width)+10;
-      if(left+180>rect.width) left-=195;
-      tip.style.left=left+'px';tip.style.top='40px';tip.style.display='block';
+      // スクロール対応：canvas内X座標→表示領域内X位置
+      var canvasXRatio=rect.width/canvas.width;
+      var tipXInCanvas=hx*canvasXRatio; // canvas内でのpx位置（スクロール込み）
+      var tipW=200;
+      // スクロールコンテナ幅（表示領域）
+      var scrollContainer=canvas.parentNode;
+      var containerW=scrollContainer?scrollContainer.clientWidth:rect.width;
+      // スクロール量を取得
+      var scrollLeft=scrollContainer?scrollContainer.scrollLeft:0;
+      // canvas内位置からスクロールを引いた表示領域内位置
+      var tipLeft=tipXInCanvas-scrollLeft+10;
+      // 表示領域からはみ出す場合は左側に
+      if(tipLeft+tipW>containerW) tipLeft=tipXInCanvas-scrollLeft-tipW-10;
+      // 最低0px
+      if(tipLeft<0) tipLeft=5;
+      tip.style.left=tipLeft+'px';tip.style.top='40px';tip.style.display='block';
     } else {
       if(_baseImageData) ctx.putImageData(_baseImageData,0,0);
       tip.style.display='none';
@@ -2630,9 +2643,13 @@ function renderVTab2Multi(part, wxKey){
         var wxv=cv._wxByDate[bestDs];
         if(wxv!==null&&wxv!==undefined) html+='<div style="color:rgba(200,60,60,0.9);">'+cv._wxKey.slice(0,12)+': <strong>'+wxv+'</strong></div>';
         tip.innerHTML=html;
-        var left=cv._xp2(bestDs)/cv.width*rect.width+10;
-        if(left+150>rect.width) left-=165;
-        tip.style.left=left+'px';tip.style.top='28px';tip.style.display='block';
+        var hx2s=cv._xp2(bestDs);
+        var tipW2=160;
+        var canvasX2=hx2s*(rect.width/cv.width);
+        var tipLeft2=canvasX2+10;
+        if(tipLeft2+tipW2>rect.width) tipLeft2=canvasX2-tipW2-10;
+        if(tipLeft2<0) tipLeft2=5;
+        tip.style.left=tipLeft2+'px';tip.style.top='28px';tip.style.display='block';
       } else {tip.style.display='none';}
     });
     cv.addEventListener('mouseleave',function(){
