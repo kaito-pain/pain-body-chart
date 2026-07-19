@@ -1626,7 +1626,7 @@ function svgLine(containerId, datasets, labels, yMin, yMin2, yMax, yMax2, y2Labe
   var minW=360;
   var neededW=PL+PR+(labels.length>1?(labels.length-1)*minPxPerLabel:minPxPerLabel);
   var W=Math.max(minW, neededW);
-  var H=220;
+  var H=300;
   var iW=W-PL-PR, iH=H-PT-PB;
   var xStep=labels.length>1?iW/(labels.length-1):iW/2;
   function px(i){return labels.length>1?PL+i*xStep:PL+iW/2;}
@@ -1687,7 +1687,7 @@ function svgBar(containerId, labels, datasets, yMax){
   var PL=44,PR=18,PT=12,PB=60;
   var minPxPerBar=36;
   var W=Math.max(360, PL+PR+labels.length*minPxPerBar);
-  var H=230;
+  var H=300;
   var iW=W-PL-PR,iH=H-PT-PB;
   var nG=labels.length,nD=datasets.length;
   var gW=iW/nG,bW=Math.min(gW*0.7/nD,28);
@@ -2045,8 +2045,8 @@ function renderVTab2(){
   // Canvas描画
   var PL=46,PR=60,PT=28,PB=56;
   var minPxPer=v2PlotMode==='ts'?24:30;
-  var W=Math.max(340,PL+PR+(plotPoints.length-1)*minPxPer);
-  var H=280;
+  var W=Math.max(360,PL+PR+(plotPoints.length-1)*minPxPer);
+  var H=360;
   var iW=W-PL-PR,iH=H-PT-PB;
   canvas.width=W;canvas.height=H;
   canvas.style.minWidth=W+'px';
@@ -2226,7 +2226,7 @@ function renderVTab2Multi(part, wxKey){
   container.appendChild(wrap);
 
   // スモールグラフ定数
-  var SW=180,SH=150,SPL=28,SPR=10,SPT=30,SPB=30;
+  var SW=240,SH=200,SPL=32,SPR=12,SPT=32,SPB=36;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2262,9 +2262,9 @@ function renderVTab2Multi(part, wxKey){
     function xp2(i){return SPL+(pts.length>1?i*siW/(pts.length-1):siW/2);}
     function yv2(v){return SPT+siH-(v/10)*siH;}
 
-    // グリッド
+    // グリッド＋NRS軸ラベル
     ctx2.strokeStyle='#eef0f5';ctx2.lineWidth=1;
-    [0,5,10].forEach(function(v){
+    [0,2,4,6,8,10].forEach(function(v){
       var y=yv2(v);ctx2.beginPath();ctx2.moveTo(SPL,y);ctx2.lineTo(SPL+siW,y);ctx2.stroke();
       ctx2.fillStyle='#aaa';ctx2.font='9px sans-serif';ctx2.textAlign='right';ctx2.fillText(v,SPL-3,y+3);
     });
