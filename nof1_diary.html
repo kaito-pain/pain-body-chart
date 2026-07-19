@@ -2284,7 +2284,7 @@ function renderVTab2(){
 
   // ===== ツールチップ + 縦ハイライト =====
   var _baseImageData=null;
-  setTimeout(function(){_baseImageData=ctx.getImageData(0,0,canvas.width,canvas.height);},0);
+  requestAnimationFrame(function(){_baseImageData=ctx.getImageData(0,0,canvas.width,canvas.height);});
   canvas._pp=plotPoints;canvas._xp=xp;canvas._wxKey=wxKey;canvas._nrsLabel=nrsLabel;
   canvas._useCenter=useCenter;canvas._PL=PL;canvas._iW=iW;canvas._PT=PT;canvas._iH=iH;
   canvas.onmousemove=function(e){
@@ -2316,20 +2316,42 @@ function renderVTab2(){
       var bw=Math.max(16,canvas._iW/Math.max(canvas._pp.length,1)*0.6);
       ctx.fillRect(hx-bw/2,canvas._PT,bw,canvas._iH);
       ctx.restore();
-      // tsモード：同じ日付の全時間帯を表示
+      // 前日差ヘルパー
+      function _prevDay(pts,ds,ts){
+        var cands=pts.filter(function(q){return q.dateStr<ds&&(ts==='avg'?q.ts!=='増悪時':q.ts===ts);});
+        cands.sort(function(a,b){return b.dateStr.localeCompare(a.dateStr);});
+        return cands.length?cands[0]:null;
+      }
+      function _diffTag(curr,prev){
+        if(prev===null||prev===undefined) return '';
+        var d=+(curr-prev).toFixed(1);
+        if(d===0) return '<span style="color:#aaa;font-size:10px;margin-left:3px;">(±0)</span>';
+        var clr=d>0?'#e07070':'#5b9bd5';
+        return '<span style="color:'+clr+';font-size:10px;margin-left:3px;">('+( d>0?'+':'')+d+')</span>';
+      }
+      // ツールチップ内容
       var sameDatePts=canvas._pp.filter(function(q){return q.dateStr===p.dateStr;});
       var tsLines='';
       if(sameDatePts.length>1){
         var tsC={'朝':'#f5a623','昼':'#3ab8c8','晩':'#7c6fd0'};
         sameDatePts.forEach(function(q){
-          tsLines+='<div style="color:'+(tsC[q.ts]||'#6b8cce')+';">'+q.ts+' NRS: <strong>'+q.nrs+'</strong></div>';
+          var prev=_prevDay(canvas._pp,q.dateStr,q.ts);
+          tsLines+='<div style="color:'+(tsC[q.ts]||'#6b8cce')+';">'+q.ts+' NRS: <strong>'+q.nrs+'</strong>'+_diffTag(q.nrs,prev?prev.nrs:null)+'</div>';
         });
       } else {
-        tsLines='<div style="color:#6b8cce;">'+canvas._nrsLabel+cn+': <strong>'+p.nrs+'</strong></div>';
+        var prev0=_prevDay(canvas._pp,p.dateStr,'avg');
+        tsLines='<div style="color:#6b8cce;">'+canvas._nrsLabel+cn+': <strong>'+p.nrs+'</strong>'+_diffTag(p.nrs,prev0?prev0.nrs:null)+'</div>';
+      }
+      // 気象前日差
+      var wxDiffHtml='';
+      if(p.wx!=null){
+        var prevWxPts=canvas._pp.filter(function(q){return q.dateStr<p.dateStr&&q.wx!=null;});
+        prevWxPts.sort(function(a,b){return b.dateStr.localeCompare(a.dateStr);});
+        var prevWx=prevWxPts.length?prevWxPts[0].wx:null;
+        wxDiffHtml='<div style="color:rgba(200,60,60,0.9);">🌡️ '+canvas._wxKey+cn+': <strong>'+p.wx+'</strong>'+_diffTag(p.wx,prevWx)+'</div>';
       }
       tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+p.dateStr+'</div>'
-        +tsLines
-        +(p.wx!=null?'<div style="color:rgba(200,60,60,0.9);">🌡️ '+canvas._wxKey+cn+': <strong>'+p.wx+'</strong></div>':'');
+        +tsLines+wxDiffHtml;
       // スクロール対応：canvas内X座標→表示領域内X位置
       var canvasXRatio=rect.width/canvas.width;
       var tipXInCanvas=hx*canvasXRatio; // canvas内でのpx位置（スクロール込み）
@@ -2575,12 +2597,7 @@ function renderVTab2Multi(part, wxKey){
     ctx2.save();ctx2.translate(SW-8,SPT+siH/2);ctx2.rotate(Math.PI/2);
     ctx2.textAlign='center';ctx2.fillStyle='rgba(200,60,60,0.8)';
     ctx2.fillText(wxKey.slice(0,6)+(useCenterMG?' (C)':''),0,0);ctx2.restore();
-    // Centering時：気象ゼロライン
-    if(useCenterMG&&wxMin<0&&wxMax>0){
-      var y0wx2=yWx2(0);
-      ctx2.strokeStyle='rgba(200,60,60,0.3)';ctx2.lineWidth=1;ctx2.setLineDash([4,3]);
-      ctx2.beginPath();ctx2.moveTo(SPL,y0wx2);ctx2.lineTo(SPL+siW,y0wx2);ctx2.stroke();ctx2.setLineDash([]);
-    }
+    // 気象ゼロラインは省略（NRSのゼロラインのみ表示）
 
     // X軸ラベル（全日付・間引きあり）
     ctx2.fillStyle='#666';ctx2.font='9px sans-serif';ctx2.textAlign='center';
@@ -2631,7 +2648,7 @@ function renderVTab2Multi(part, wxKey){
 
     // ツールチップ＋縦ハイライト
     var _baseImg2=null;
-    setTimeout(function(){_baseImg2=ctx2.getImageData(0,0,cv.width,cv.height);},0);
+    requestAnimationFrame(function(){_baseImg2=ctx2.getImageData(0,0,cv.width,cv.height);});
     cv._pts=pts;cv._xp2=xp2;cv._col=col;cv._wxKey=wxKey;cv._wxByDate=wxByDate;cv._allDates=allDates;cv._useCenterMG=useCenterMG;
     cv.addEventListener('mousemove',function(e){
       var rect=cv.getBoundingClientRect();
@@ -2655,15 +2672,33 @@ function renderVTab2Multi(part, wxKey){
         ctx2.restore();
         // その日付の全データポイント
         var dayPts=cv._pts.filter(function(p){return p.dateStr===bestDs;});
+        // 前日差ヘルパー（全項目グラフ用）
+        function _prevDay2(pts,ds,ts){
+          var cands=pts.filter(function(q){return q.dateStr<ds&&(ts==='avg'?true:q.ts===ts);});
+          cands.sort(function(a,b){return b.dateStr.localeCompare(a.dateStr);});
+          return cands.length?cands[0]:null;
+        }
+        function _diffTag2(curr,prev){
+          if(prev===null||prev===undefined) return '';
+          var d=+(curr-prev).toFixed(1);
+          if(d===0) return '<span style="color:#aaa;font-size:10px;margin-left:2px;">(±0)</span>';
+          var clr=d>0?'#e07070':'#5b9bd5';
+          return '<span style="color:'+clr+';font-size:10px;margin-left:2px;">('+( d>0?'+':'')+d+')</span>';
+        }
         var html='<div style="font-weight:700;color:#3a5fa0;margin-bottom:3px;">📅 '+bestDs+'</div>';
         dayPts.forEach(function(p){
           var tc=p.ts==='avg'?cv._col:(TS_COLORS[p.ts]||cv._col);
-          html+='<div style="color:'+tc+';">'+(p.ts!=='avg'?p.ts+' ':'')+'NRS: <strong>'+p.nrs+'</strong></div>';
+          var prev2=_prevDay2(cv._pts,p.dateStr,p.ts);
+          html+='<div style="color:'+tc+';">'+(p.ts!=='avg'?p.ts+' ':'')+'NRS: <strong>'+p.nrs+'</strong>'+_diffTag2(p.nrs,prev2?prev2.nrs:null)+'</div>';
         });
         var wxv=cv._wxByDate[bestDs];
         if(wxv!==null&&wxv!==undefined){
+          // 気象前日差
+          var prevDates=cv._allDates.filter(function(d){return d<bestDs;});
+          var prevWxDs=prevDates.length?prevDates[prevDates.length-1]:null;
+          var prevWxV=prevWxDs?cv._wxByDate[prevWxDs]:null;
           var wxLabel=cv._wxKey.slice(0,12)+(cv._useCenterMG?' (C)':'');
-          html+='<div style="color:rgba(200,60,60,0.9);">'+wxLabel+': <strong>'+wxv+'</strong></div>';
+          html+='<div style="color:rgba(200,60,60,0.9);">'+wxLabel+': <strong>'+wxv+'</strong>'+_diffTag2(wxv,prevWxV)+'</div>';
         }
         tip.innerHTML=html;
         var hx2s=cv._xp2(bestDs);
