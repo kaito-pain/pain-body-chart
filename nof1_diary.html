@@ -2153,23 +2153,29 @@ function renderVTab2(){
   }
   var yNrs=function(v){return PT+iH-(v-yNrsMin)/(yNrsMax-yNrsMin)*iH;};
 
-  // グリッド（水平・垂直両方）
-  ctx.strokeStyle='rgba(200,210,230,0.4)';ctx.lineWidth=0.8;
-  // 水平グリッド（5本）
+  // ===== グリッド描画（全モード共通・破線）=====
+  // 水平グリッド（破線）
+  ctx.strokeStyle='rgba(200,210,230,0.5)';ctx.lineWidth=0.8;ctx.setLineDash([4,4]);
   for(var g=0;g<=5;g++){var y=PT+iH*g/5;ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(PL+iW,y);ctx.stroke();}
-  // 垂直グリッド（日付位置）
+  ctx.setLineDash([]);
+  // 垂直グリッド：全モードで全日付位置に破線
+  var _vgDates=[];
   if(v2PlotMode==='ts'){
     var _vgDateSet={};plotPoints.forEach(function(p){_vgDateSet[p.dateStr]=true;});
-    Object.keys(_vgDateSet).sort().forEach(function(ds){
-      var x=PL+(Object.keys(_vgDateSet).sort().indexOf(ds))*(iW/(Math.max(1,Object.keys(_vgDateSet).length-1)));
-      ctx.beginPath();ctx.moveTo(x,PT);ctx.lineTo(x,PT+iH);ctx.stroke();
-    });
+    _vgDates=Object.keys(_vgDateSet).sort();
   } else {
-    var every_vg=Math.max(1,Math.floor(plotPoints.length/8));
-    plotPoints.forEach(function(p,i){
-      if(i%every_vg===0){var x=xp(i);ctx.beginPath();ctx.moveTo(x,PT);ctx.lineTo(x,PT+iH);ctx.stroke();}
-    });
+    _vgDates=plotPoints.map(function(p){return p.label||p.dateStr;});
   }
+  ctx.strokeStyle='rgba(200,210,230,0.5)';ctx.lineWidth=0.8;ctx.setLineDash([4,4]);
+  _vgDates.forEach(function(ds,i){
+    var x=v2PlotMode==='ts'?xpByDateGlobal(ds,_vgDates):xp(i);
+    ctx.beginPath();ctx.moveTo(x,PT);ctx.lineTo(x,PT+iH);ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  // グローバルX座標計算用（tsモード・日付ベース）
+  function xpByDateGlobal(ds,dates){return PL+(dates.length>1?dates.indexOf(ds)*iW/(dates.length-1):iW/2);}
+  // ホバー用にグリッド情報を保存
+  canvas._vgDates=_vgDates;canvas._xpByDateGlobal=xpByDateGlobal;
 
   // 軸ラベル（Raw/中心化両対応）
   ctx.font='11px sans-serif';
@@ -2276,7 +2282,9 @@ function renderVTab2(){
     ctx.fillStyle='#e07070';ctx.textAlign='right';ctx.fillText('● '+wxKey,W-PR,18);
   }
 
-  // ツールチップ（縦グリッド対応：グラフエリア内ならどこでも反応）
+  // ===== ツールチップ + 縦ハイライト =====
+  var _baseImageData=null;
+  setTimeout(function(){_baseImageData=ctx.getImageData(0,0,canvas.width,canvas.height);},0);
   canvas._pp=plotPoints;canvas._xp=xp;canvas._wxKey=wxKey;canvas._nrsLabel=nrsLabel;
   canvas._useCenter=useCenter;canvas._PL=PL;canvas._iW=iW;canvas._PT=PT;canvas._iH=iH;
   canvas.onmousemove=function(e){
@@ -2286,6 +2294,7 @@ function renderVTab2(){
     var tip=document.getElementById('v2-tooltip');
     // グラフエリア外は非表示
     if(mx<canvas._PL-10||mx>canvas._PL+canvas._iW+10||my<canvas._PT||my>canvas._PT+canvas._iH){
+      if(_baseImageData) ctx.putImageData(_baseImageData,0,0);
       tip.style.display='none';return;
     }
     // X軸方向の最近傍点（Y位置は問わない→縦線ホバー）
@@ -2296,7 +2305,17 @@ function renderVTab2(){
     });
     if(best&&bestDist<50){
       var p=best.p;
-      var cn=canvas._useCenter?' (中心化)':'';
+      var cn=canvas._useCenter?' (C)':'';
+      // ベース画像に戻してから縦ハイライト描画
+      if(_baseImageData) ctx.putImageData(_baseImageData,0,0);
+      var hx=canvas._xp(best.i);
+      ctx.save();
+      ctx.strokeStyle='rgba(80,120,200,0.6)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(hx,canvas._PT);ctx.lineTo(hx,canvas._PT+canvas._iH);ctx.stroke();
+      ctx.fillStyle='rgba(80,120,200,0.08)';
+      var bw=Math.max(16,canvas._iW/Math.max(canvas._pp.length,1)*0.6);
+      ctx.fillRect(hx-bw/2,canvas._PT,bw,canvas._iH);
+      ctx.restore();
       // tsモード：同じ日付の全時間帯を表示
       var sameDatePts=canvas._pp.filter(function(q){return q.dateStr===p.dateStr;});
       var tsLines='';
@@ -2315,10 +2334,14 @@ function renderVTab2(){
       if(left+180>rect.width) left-=195;
       tip.style.left=left+'px';tip.style.top='40px';tip.style.display='block';
     } else {
+      if(_baseImageData) ctx.putImageData(_baseImageData,0,0);
       tip.style.display='none';
     }
   };
-  canvas.onmouseleave=function(){document.getElementById('v2-tooltip').style.display='none';};
+  canvas.onmouseleave=function(){
+    if(_baseImageData) ctx.putImageData(_baseImageData,0,0);
+    document.getElementById('v2-tooltip').style.display='none';
+  };
 }
 
 
@@ -2497,10 +2520,11 @@ function renderVTab2Multi(part, wxKey){
     function yWx2(v){return wxMax===wxMin?SPT+siH/2:SPT+siH-(v-wxMin)/(wxMax-wxMin)*siH;}
 
     // グリッド（2刻み：0,2,4,6,8,10）
-    ctx2.strokeStyle='#eef0f5';ctx2.lineWidth=1;
-    [0,2,4,6,8,10].forEach(function(v){
-      var y=yNrs2(v);ctx2.beginPath();ctx2.moveTo(SPL,y);ctx2.lineTo(SPL+siW,y);ctx2.stroke();
-    });
+    // グリッド（破線・水平+全日付垂直）
+    ctx2.strokeStyle='rgba(200,210,230,0.5)';ctx2.lineWidth=0.8;ctx2.setLineDash([4,4]);
+    for(var gss=0;gss<=5;gss++){var yg=SPT+siH*gss/5;ctx2.beginPath();ctx2.moveTo(SPL,yg);ctx2.lineTo(SPL+siW,yg);ctx2.stroke();}
+    allDates.forEach(function(ds){var xg=xp2(ds);ctx2.beginPath();ctx2.moveTo(xg,SPT);ctx2.lineTo(xg,SPT+siH);ctx2.stroke();});
+    ctx2.setLineDash([]);
 
     // 左Y軸（NRS・Raw/Center対応）
     ctx2.font='9px sans-serif';ctx2.fillStyle='#6b8cce';ctx2.textAlign='right';
@@ -2572,7 +2596,9 @@ function renderVTab2Multi(part, wxKey){
     ctx2.fillStyle=col;ctx2.font='bold 10px sans-serif';ctx2.textAlign='right';
     ctx2.fillText('NRS平均:'+avg,SPL+siW,SPT-10);
 
-    // ツールチップ
+    // ツールチップ＋縦ハイライト
+    var _baseImg2=null;
+    setTimeout(function(){_baseImg2=ctx2.getImageData(0,0,cv.width,cv.height);},0);
     cv._pts=pts;cv._xp2=xp2;cv._col=col;cv._wxKey=wxKey;cv._wxByDate=wxByDate;cv._allDates=allDates;
     cv.addEventListener('mousemove',function(e){
       var rect=cv.getBoundingClientRect();
@@ -2584,6 +2610,16 @@ function renderVTab2Multi(part, wxKey){
         if(d<bestD){bestD=d;bestDs=ds;}
       });
       if(bestDs&&bestD<30){
+        // 縦ハイライト
+        if(_baseImg2) ctx2.putImageData(_baseImg2,0,0);
+        var hx2=cv._xp2(bestDs);
+        ctx2.save();
+        ctx2.strokeStyle='rgba(100,140,220,0.5)';ctx2.lineWidth=2;
+        ctx2.beginPath();ctx2.moveTo(hx2,SPT);ctx2.lineTo(hx2,SPT+siH);ctx2.stroke();
+        ctx2.fillStyle='rgba(100,140,220,0.08)';
+        var bw2=Math.max(12,siW/(cv._allDates.length||1)*0.5);
+        ctx2.fillRect(hx2-bw2/2,SPT,bw2,siH);
+        ctx2.restore();
         // その日付の全データポイント
         var dayPts=cv._pts.filter(function(p){return p.dateStr===bestDs;});
         var html='<div style="font-weight:700;color:#3a5fa0;margin-bottom:3px;">📅 '+bestDs+'</div>';
@@ -2599,7 +2635,10 @@ function renderVTab2Multi(part, wxKey){
         tip.style.left=left+'px';tip.style.top='28px';tip.style.display='block';
       } else {tip.style.display='none';}
     });
-    cv.addEventListener('mouseleave',function(){tip.style.display='none';});
+    cv.addEventListener('mouseleave',function(){
+      if(_baseImg2) ctx2.putImageData(_baseImg2,0,0);
+      tip.style.display='none';
+    });
   });
 }
 
