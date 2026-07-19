@@ -1805,7 +1805,7 @@ function vFilter(recs,days){
 }
 function vAvgVas(r){
   var s=[];for(var q=1;q<=22;q++){var v=r['Q'+q];if(v!==''&&v!==null&&v!==undefined&&String(v)!==''&&!isNaN(+v)&&+v>=0)s.push(+v);}
-  return s.length?s.reduce(function(a,b){return a+b;})/s.length:null;
+  return s.length?Math.round(s.reduce(function(a,b){return a+b;})/s.length*10)/10:null;
 }
 // 日付ソート済み配列から重複なしの日付リストを取得
 function vUniqDates(recs){
