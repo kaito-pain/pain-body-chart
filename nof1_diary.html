@@ -2056,19 +2056,23 @@ function renderVTab2(){
   ctx.fillStyle='#e07070';ctx.textAlign='left';
   for(var g=0;g<=5;g++){ctx.fillText((wxMax-(wxMax-wxMin)*g/5).toFixed(1),PL+iW+6,PT+iH*g/5+4);}
 
-  // X軸ラベル
-  ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';
-  var every=Math.max(1,Math.ceil(plotPoints.length/(iW/28)));
-  plotPoints.forEach(function(p,i){
-    if(i%every===0||i===plotPoints.length-1){
-      ctx.save();ctx.translate(xp(i),PT+iH+14);ctx.rotate(-0.6);ctx.fillText(p.label,0,0);ctx.restore();
-    }
-  });
+  // X軸ラベル（日平均モードのみ・tsモードは後で日付ベースで描画）
+  if(v2PlotMode!=='ts'){
+    ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';
+    var every=Math.max(1,Math.ceil(plotPoints.length/(iW/28)));
+    plotPoints.forEach(function(p,i){
+      if(i%every===0||i===plotPoints.length-1){
+        ctx.save();ctx.translate(xp(i),PT+iH+14);ctx.rotate(-0.6);ctx.fillText(p.label,0,0);ctx.restore();
+      }
+    });
+  }
 
-  // 気象折れ線（赤破線）
-  ctx.beginPath();ctx.strokeStyle='rgba(200,60,60,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([6,3]);
-  plotPoints.forEach(function(p,i){var x=xp(i),y=yWx(p.wx);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.stroke();ctx.setLineDash([]);
+  // 気象折れ線（赤破線）- tsモード時は後でxpByDate使用のため日平均のみここで描画
+  if(v2PlotMode!=='ts'){
+    ctx.beginPath();ctx.strokeStyle='rgba(200,60,60,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([6,3]);
+    plotPoints.forEach(function(p,i){var x=xp(i),y=yWx(p.wx);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();ctx.setLineDash([]);
+  }
 
   // NRS折れ線
   if(v2PlotMode==='ts'){
@@ -2089,6 +2093,18 @@ function renderVTab2(){
       }
     });
     ctx.restore();
+
+    // 気象折れ線（赤破線・tsモード用）
+    ctx.beginPath();ctx.strokeStyle='rgba(200,60,60,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([6,3]);
+    var _wxFirst=true;
+    tsAllDates.forEach(function(ds){
+      // その日の気象値（朝の値を使用）
+      var wxPt=plotPoints.find(function(p){return p.dateStr===ds&&p.wx!==undefined&&p.wx!==null;});
+      if(!wxPt){_wxFirst=true;return;}
+      var x=xpByDate(ds),y=yWx(wxPt.wx);
+      if(_wxFirst){ctx.moveTo(x,y);_wxFirst=false;}else{ctx.lineTo(x,y);}
+    });
+    ctx.stroke();ctx.setLineDash([]);
 
     // 朝昼晩を色分けして同じ日付X位置にプロット
     ['朝','昼','晩'].forEach(function(ts){
