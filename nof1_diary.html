@@ -2212,7 +2212,7 @@ function renderVTab2Multi(part, wxKey){
   var cardW=Math.floor((Math.min(screenW,container.offsetWidth||screenW)-14*(cols+1))/cols);
   cardW=Math.max(220,Math.min(cardW,440));
   var SW=cardW,SH=Math.round(SW*0.65);
-  var SPL=38,SPR=16,SPT=36,SPB=38;
+  var SPL=38,SPR=48,SPT=36,SPB=38;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2261,7 +2261,13 @@ function renderVTab2Multi(part, wxKey){
     ctx2.save();ctx2.translate(12,SPT+siH/2);ctx2.rotate(-Math.PI/2);
     ctx2.textAlign='center';ctx2.fillText('NRS',0,0);ctx2.restore();
 
-    // 右Y軸なし（気象削除）
+    // 右Y軸（気象）
+    ctx2.fillStyle='#e07070';ctx2.font='9px sans-serif';ctx2.textAlign='left';
+    [wxMin,Math.round((wxMin+wxMax)/2),wxMax].forEach(function(v){
+      ctx2.fillText(v,SPL+siW+5,yWx2(v)+3);
+    });
+    ctx2.save();ctx2.translate(SW-10,SPT+siH/2);ctx2.rotate(Math.PI/2);
+    ctx2.textAlign='center';ctx2.fillText(wxKey.slice(0,6),0,0);ctx2.restore();
 
     // X軸ラベル
     ctx2.fillStyle='#888';ctx2.font='9px sans-serif';ctx2.textAlign='center';
