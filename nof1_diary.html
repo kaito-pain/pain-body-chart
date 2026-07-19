@@ -2074,11 +2074,10 @@ function renderVTab2(){
     }
   });
 
-  // 気象折れ線
-  ctx.beginPath();ctx.strokeStyle='#e07070';ctx.lineWidth=2;
+  // 気象折れ線（点線・点なし）
+  ctx.beginPath();ctx.strokeStyle='rgba(224,112,112,0.75)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);
   plotPoints.forEach(function(p,i){var x=xp(i),y=yWx(p.wx);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.stroke();
-  plotPoints.forEach(function(p,i){ctx.beginPath();ctx.arc(xp(i),yWx(p.wx),3.5,0,Math.PI*2);ctx.fillStyle='#e07070';ctx.fill();});
+  ctx.stroke();ctx.setLineDash([]);
 
   // NRS折れ線
   if(v2PlotMode==='ts'){
@@ -2147,24 +2146,23 @@ function renderVTab2Multi(part, wxKey){
   var Q_COLORS=['#e07070','#6b8cce','#70b870','#e0a040','#9070d0','#50b8d0','#d07090','#80b850','#c060c0','#60b0c0','#b0803a','#607880'];
 
   // 期間フィルタ
-  var allPartRecs = vRecords.filter(function(r){ return r['部位']===part; });
-  var recs, periodLabel='';
-  if(v2CurrentMonth) {
-    var y=v2CurrentMonth.year, m=v2CurrentMonth.month;
-    recs = allPartRecs.filter(function(r){
-      var d=new Date(String(r['記録日']).replace(/\//g,'-'));
-      return d.getFullYear()===y && d.getMonth()===m;
-    });
-    periodLabel = y+'年 '+(m+1)+'月';
+  var allPartRecs=vRecords.filter(function(r){return r['部位']===part;});
+  var recs,periodLabel='';
+  if(v2CurrentMonth){
+    var y=v2CurrentMonth.year,m=v2CurrentMonth.month;
+    recs=allPartRecs.filter(function(r){var d=new Date(String(r['記録日']).replace(/\//g,'-'));return d.getFullYear()===y&&d.getMonth()===m;});
+    periodLabel=y+'年 '+(m+1)+'月';
   } else {
-    var selBtn = document.querySelector('#vpanel-2 .vperiod-btn.sel[data-days]');
-    var days = selBtn ? parseInt(selBtn.dataset.days) : 30;
-    recs = days===0 ? allPartRecs : vFilter(allPartRecs, days);
-    if(!recs.length) recs = allPartRecs;
-    periodLabel = days===0 ? '全期間' : days+'日間';
+    var selBtn=document.querySelector('#vpanel-2 .vperiod-btn.sel[data-days]');
+    var days=selBtn?parseInt(selBtn.dataset.days):30;
+    recs=days===0?allPartRecs:vFilter(allPartRecs,days);
+    if(!recs.length) recs=allPartRecs;
+    periodLabel=days===0?'全期間':days+'日間';
   }
   var labelEl=document.getElementById('v2-month-label');
   if(labelEl) labelEl.textContent=periodLabel;
+  var titleEl=document.getElementById('vc-wx-title');
+  if(titleEl) titleEl.textContent='🌡️ 全性質プロファイル（各Q項目）';
 
   // Q項目を特定
   var qNums=[];
@@ -2178,21 +2176,29 @@ function renderVTab2Multi(part, wxKey){
 
   // 日付リスト
   var dateSet={};
-  recs.forEach(function(r){ dateSet[String(r['記録日'])]=true; });
+  recs.forEach(function(r){dateSet[String(r['記録日'])]=true;});
   var dates=Object.keys(dateSet).sort();
 
-  if(!dates.length || !qNums.length){
-    var canvas=document.getElementById('v2-canvas');
-    var ctx=canvas.getContext('2d');
-    canvas.width=340;canvas.height=160;
-    ctx.clearRect(0,0,340,160);
-    ctx.fillStyle='#bbb';ctx.font='14px sans-serif';ctx.textAlign='center';
-    ctx.fillText('データがありません',170,80);
+  // グラフコンテナをflexに
+  var canvasEl=document.getElementById('v2-canvas');
+  canvasEl.style.display='none'; // メインcanvasは非表示
+
+  // 既存のマルチグラフを削除
+  var container=canvasEl.parentNode;
+  var old=container.querySelectorAll('.v2-multi-wrap');
+  old.forEach(function(el){el.remove();});
+
+  if(!dates.length||!qNums.length){
+    var div=document.createElement('div');
+    div.className='v2-multi-wrap';
+    div.style.cssText='text-align:center;padding:30px;color:#bbb;font-size:14px;';
+    div.textContent='データがありません';
+    container.appendChild(div);
     return;
   }
 
-  // Q項目×日付の平均を集計
-  var qData={}; // qData[q][date] = avg
+  // 各Q項目のデータを集計
+  var qData={};
   qNums.forEach(function(q){
     qData[q]={};
     dates.forEach(function(ds){
@@ -2204,128 +2210,84 @@ function renderVTab2Multi(part, wxKey){
     });
   });
 
-  // 気象データ（日平均）
-  var wxData={};
-  dates.forEach(function(ds){
-    var vals=recs.filter(function(r){
-      return String(r['記録日'])===ds&&r[wxKey]!==''&&r[wxKey]!==null&&!isNaN(+r[wxKey]);
-    }).map(function(r){return +r[wxKey];});
-    wxData[ds]=vals.length?+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(2):null;
-  });
-  var wxVals=dates.map(function(d){return wxData[d];}).filter(function(v){return v!==null;});
-  var wxMin=Math.min.apply(null,wxVals)||0, wxMax=Math.max.apply(null,wxVals)||100;
-  var wxRange=wxMax-wxMin||1;
-  wxMin=Math.floor(wxMin-wxRange*0.1); wxMax=Math.ceil(wxMax+wxRange*0.1);
+  // flex wrap コンテナ
+  var wrap=document.createElement('div');
+  wrap.className='v2-multi-wrap';
+  wrap.style.cssText='display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;';
+  container.appendChild(wrap);
 
-  // タイトル
-  var titleEl=document.getElementById('vc-wx-title');
-  if(titleEl) titleEl.textContent='🌡️ 全性質プロファイル ＋ '+wxKey;
+  // 各Q項目のスモールグラフ
+  var SW=160,SH=130,SPL=28,SPR=12,SPT=22,SPB=28;
+  var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
-  // Canvas
-  var PL=46,PR=60,PT=28,PB=56+qNums.length*14;
-  var W=Math.max(340,PL+PR+(dates.length-1)*36);
-  var H=Math.max(300, 280+qNums.length*12);
-  var iW=W-PL-PR, iH=H-PT-PB;
-  var canvas=document.getElementById('v2-canvas');
-  var ctx=canvas.getContext('2d');
-  canvas.width=W;canvas.height=H;
-  canvas.style.minWidth=W+'px';
-  ctx.clearRect(0,0,W,H);
-
-  function xp(i){return PL+(dates.length>1?i*iW/(dates.length-1):iW/2);}
-  function yNrs(v){return PT+iH-(v/10)*iH;}
-  function yWx(v){return PT+iH-(v-wxMin)/(wxMax-wxMin)*iH;}
-
-  // グリッド
-  ctx.strokeStyle='#e8edf5';ctx.lineWidth=1;
-  for(var g=0;g<=5;g++){var y=PT+iH*g/5;ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(PL+iW,y);ctx.stroke();}
-
-  // Y軸ラベル
-  ctx.font='11px sans-serif';
-  ctx.fillStyle='#555';ctx.textAlign='right';
-  for(var g=0;g<=5;g++){ctx.fillText(10-g*2,PL-6,PT+iH*g/5+4);}
-  ctx.fillStyle='#e07070';ctx.textAlign='left';
-  for(var g=0;g<=5;g++){ctx.fillText((wxMax-(wxMax-wxMin)*g/5).toFixed(1),PL+iW+6,PT+iH*g/5+4);}
-
-  // X軸ラベル
-  ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';
-  var every=Math.max(1,Math.ceil(dates.length/(iW/30)));
-  dates.forEach(function(ds,i){
-    if(i%every===0||i===dates.length-1){
-      ctx.save();ctx.translate(xp(i),PT+iH+14);ctx.rotate(-0.6);ctx.fillText(ds.slice(5),0,0);ctx.restore();
-    }
-  });
-
-  // 気象折れ線（赤）
-  ctx.beginPath();ctx.strokeStyle='#e07070';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
-  dates.forEach(function(ds,i){var v=wxData[ds];if(v===null)return;var x=xp(i),y=yWx(v);i===0||wxData[dates[i-1]]===null?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.stroke();ctx.setLineDash([]);
-  dates.forEach(function(ds,i){var v=wxData[ds];if(v===null)return;ctx.beginPath();ctx.arc(xp(i),yWx(v),3,0,Math.PI*2);ctx.fillStyle='rgba(224,112,112,0.6)';ctx.fill();});
-
-  // Q項目ごとの折れ線
   qNums.forEach(function(q,qi){
     var col=Q_COLORS[qi%Q_COLORS.length];
+    var data=dates.map(function(ds){return qData[q][ds];});
+    var hasData=data.some(function(v){return v!==null;});
+
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border-radius:10px;padding:8px;box-shadow:0 1px 4px rgba(100,130,200,0.1);';
+    wrap.appendChild(card);
+
+    // タイトル
+    var title=document.createElement('div');
+    title.style.cssText='font-size:11px;font-weight:700;color:'+col+';margin-bottom:4px;';
+    title.textContent='Q'+q+': '+SFMPQ2_S[q-1];
+    card.appendChild(title);
+
+    // Canvas
+    var cv=document.createElement('canvas');
+    cv.width=SW;cv.height=SH;
+    cv.style.cssText='display:block;width:'+SW+'px;height:'+SH+'px;';
+    card.appendChild(cv);
+    var ctx=cv.getContext('2d');
+
+    if(!hasData){
+      ctx.fillStyle='#ccc';ctx.font='10px sans-serif';ctx.textAlign='center';
+      ctx.fillText('データなし',SW/2,SH/2);
+      return;
+    }
+
+    function xp(i){return SPL+(dates.length>1?i*siW/(dates.length-1):siW/2);}
+    function yv(v){return SPT+siH-(v/10)*siH;}
+
+    // グリッド（5段階）
+    ctx.strokeStyle='#eef0f5';ctx.lineWidth=1;
+    [0,2,4,6,8,10].forEach(function(v){
+      var y=yv(v);
+      ctx.beginPath();ctx.moveTo(SPL,y);ctx.lineTo(SPL+siW,y);ctx.stroke();
+      ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.textAlign='right';
+      ctx.fillText(v,SPL-3,y+3);
+    });
+
+    // X軸ラベル（最初と最後のみ）
+    ctx.fillStyle='#888';ctx.font='9px sans-serif';ctx.textAlign='center';
+    if(dates.length>0) ctx.fillText(dates[0].slice(5),xp(0),SH-6);
+    if(dates.length>1) ctx.fillText(dates[dates.length-1].slice(5),xp(dates.length-1),SH-6);
+
+    // 折れ線
     ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;
     var first=true;
-    dates.forEach(function(ds,i){
-      var v=qData[q][ds];
+    data.forEach(function(v,i){
       if(v===null){first=true;return;}
-      var x=xp(i),y=yNrs(v);
+      var x=xp(i),y=yv(v);
       if(first){ctx.moveTo(x,y);first=false;}else{ctx.lineTo(x,y);}
     });
     ctx.stroke();
-    dates.forEach(function(ds,i){
-      var v=qData[q][ds];
+
+    // 点
+    data.forEach(function(v,i){
       if(v===null) return;
-      ctx.beginPath();ctx.arc(xp(i),yNrs(v),4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+      ctx.beginPath();ctx.arc(xp(i),yv(v),3,0,Math.PI*2);
+      ctx.fillStyle=col;ctx.fill();
     });
-  });
 
-  // 凡例（グラフ下）
-  var legY=PT+iH+PB-qNums.length*14+4;
-  var legX=PL;
-  // 気象
-  ctx.fillStyle='#e07070';ctx.font='10px sans-serif';ctx.textAlign='left';
-  ctx.beginPath();ctx.moveTo(legX,legY+4);ctx.lineTo(legX+16,legY+4);ctx.strokeStyle='#e07070';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillText(wxKey.slice(0,12), legX+20, legY+8);
-  // Q項目
-  qNums.forEach(function(q,qi){
-    var col=Q_COLORS[qi%Q_COLORS.length];
-    var lx=legX+((qi+1)%3===0&&qi>0?0:(qi+1)*((W-PL-PR)/Math.min(qNums.length,3)));
-    var ly=legY+14*Math.floor((qi+1)/3)+14;
-    // 簡易レイアウト：2列
-    var col2 = qi%2===0 ? PL : PL+(W-PL-PR)/2;
-    var row2 = PT+iH+36+Math.floor(qi/2)*14;
-    ctx.fillStyle=col;
-    ctx.beginPath();ctx.arc(col2+6,row2,4,0,Math.PI*2);ctx.fill();
-    ctx.fillText('Q'+q+': '+SFMPQ2_S[q-1], col2+14, row2+4);
+    // 平均値ラベル
+    var nonNull=data.filter(function(v){return v!==null;});
+    var avg=nonNull.length?+(nonNull.reduce(function(a,b){return a+b;})/nonNull.length).toFixed(1):'-';
+    ctx.fillStyle=col;ctx.font='bold 10px sans-serif';ctx.textAlign='right';
+    ctx.fillText('平均:'+avg,SW-SPR,SPT-6);
   });
-
-  // ツールチップ
-  canvas._dates=dates;canvas._qNums=qNums;canvas._qData=qData;canvas._wxData=wxData;
-  canvas._xp=xp;canvas._meta={wxKey:wxKey,SFMPQ2_S:SFMPQ2_S,Q_COLORS:Q_COLORS};
-  canvas.onmousemove=function(e){
-    var rect=canvas.getBoundingClientRect();
-    var mx=(e.clientX-rect.left)*(canvas.width/rect.width);
-    var bestI=0,bestD=Infinity;
-    canvas._dates.forEach(function(ds,i){var d=Math.abs(mx-canvas._xp(i));if(d<bestD){bestD=d;bestI=i;}});
-    var tip=document.getElementById('v2-tooltip');
-    if(bestD<30){
-      var ds=canvas._dates[bestI];
-      var html='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+ds+'</div>';
-      html+='<div style="color:#e07070;">'+canvas._meta.wxKey+': <strong>'+(canvas._wxData[ds]||'-')+'</strong></div>';
-      canvas._qNums.forEach(function(q,qi){
-        var v=canvas._qData[q][ds];
-        var col=canvas._meta.Q_COLORS[qi%canvas._meta.Q_COLORS.length];
-        html+='<div style="color:'+col+';">Q'+q+' '+canvas._meta.SFMPQ2_S[q-1]+': <strong>'+(v!==null?v:'-')+'</strong></div>';
-      });
-      tip.innerHTML=html;
-      var left=canvas._xp(bestI)/canvas.width*rect.width+10;
-      if(left+180>rect.width) left-=200;
-      tip.style.left=left+'px';tip.style.top='48px';tip.style.display='block';
-    } else { tip.style.display='none'; }
-  };
-  canvas.onmouseleave=function(){document.getElementById('v2-tooltip').style.display='none';};
 }
 
 function renderVTab3(){
