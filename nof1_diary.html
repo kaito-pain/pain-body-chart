@@ -253,6 +253,9 @@
     .vsummary-value { font-size: 24px; font-weight: 700; color: #3a5fa0; line-height: 1; }
     .vsummary-unit { font-size: 11px; color: #aaa; margin-left: 2px; }
     .vno-data { text-align: center; padding: 30px; color: #bbb; font-size: 14px; }
+    .v2-mbtn { padding:4px 8px;border-radius:14px;border:1.5px solid #c5d0e8;background:#fff;color:#4a6fa5;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s; }
+    .v2-mbtn.sel { background:#6b8cce;color:#fff;border-color:#6b8cce; }
+    .v2-mbtn:hover { background:#eef2ff; }
     /* メモ一覧 */
     .memo-list-item { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(100,130,200,0.08); }
     .memo-list-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
@@ -627,18 +630,31 @@
   <div class="viewer-content">
     <!-- タブ① 経時変化 -->
     <div class="vpanel active" id="vpanel-0">
-      <!-- 月ナビ + 期間ボタン -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button onclick="v2MonthNav(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:#4a6fa5;padding:4px 8px;">◀</button>
-          <span id="v2-month-label" style="font-size:15px;font-weight:700;color:#3a5fa0;min-width:90px;text-align:center;"></span>
-          <button onclick="v2MonthNav(+1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:#4a6fa5;padding:4px 8px;">▶</button>
+      <!-- 期間ナビ -->
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button id="v2-recent-btn" onclick="v2SetRecent()" style="padding:5px 14px;border-radius:20px;border:1.5px solid #6b8cce;background:#6b8cce;color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">直近30日</button>
+          <div style="display:flex;align-items:center;gap:4px;margin-left:4px;">
+            <button onclick="v2YearNav(-1)" style="background:none;border:none;font-size:16px;cursor:pointer;color:#4a6fa5;padding:2px 6px;">◀</button>
+            <span id="v2-year-label" style="font-size:13px;font-weight:700;color:#3a5fa0;min-width:48px;text-align:center;"></span>
+            <button onclick="v2YearNav(+1)" style="background:none;border:none;font-size:16px;cursor:pointer;color:#4a6fa5;padding:2px 6px;">▶</button>
+          </div>
+          <div id="v2-month-btns" style="display:flex;gap:3px;flex-wrap:wrap;">
+            <button class="v2-mbtn" data-month="1" onclick="v2SetMonth(this)">1月</button>
+            <button class="v2-mbtn" data-month="2" onclick="v2SetMonth(this)">2月</button>
+            <button class="v2-mbtn" data-month="3" onclick="v2SetMonth(this)">3月</button>
+            <button class="v2-mbtn" data-month="4" onclick="v2SetMonth(this)">4月</button>
+            <button class="v2-mbtn" data-month="5" onclick="v2SetMonth(this)">5月</button>
+            <button class="v2-mbtn" data-month="6" onclick="v2SetMonth(this)">6月</button>
+            <button class="v2-mbtn" data-month="7" onclick="v2SetMonth(this)">7月</button>
+            <button class="v2-mbtn" data-month="8" onclick="v2SetMonth(this)">8月</button>
+            <button class="v2-mbtn" data-month="9" onclick="v2SetMonth(this)">9月</button>
+            <button class="v2-mbtn" data-month="10" onclick="v2SetMonth(this)">10月</button>
+            <button class="v2-mbtn" data-month="11" onclick="v2SetMonth(this)">11月</button>
+            <button class="v2-mbtn" data-month="12" onclick="v2SetMonth(this)">12月</button>
+          </div>
         </div>
-        <div class="vperiod-btns">
-          <button class="vperiod-btn" data-days="14" onclick="setVPeriod(this,2)">2週</button>
-          <button class="vperiod-btn sel" data-days="30" onclick="setVPeriod(this,2)">1ヶ月</button>
-          <button class="vperiod-btn" data-days="0" onclick="setVPeriod(this,2)">全期間</button>
-        </div>
+        <div id="v2-month-label" style="font-size:12px;color:#888;margin-top:4px;"></div>
       </div>
       <!-- コントロール（横並び） -->
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
@@ -671,6 +687,13 @@
           <div class="vperiod-btns">
             <button class="vperiod-btn sel" id="v2-plot-avg" onclick="v2SetPlot('avg',this)">日平均</button>
             <button class="vperiod-btn" id="v2-plot-ts" onclick="v2SetPlot('ts',this)">朝昼晩別</button>
+          </div>
+        </div>
+        <div id="vctrl-center2" style="display:none;align-items:center;gap:6px;">
+          <span class="vctrl-label" style="white-space:nowrap;">スケール：</span>
+          <div class="vperiod-btns">
+            <button class="vperiod-btn sel" id="v2-scale-raw" onclick="v2SetScale('raw',this)">Raw</button>
+            <button class="vperiod-btn" id="v2-scale-center" onclick="v2SetScale('center',this)">中心化</button>
           </div>
         </div>
       </div>
@@ -1886,7 +1909,10 @@ function renderVTab1(){
 
 // ===== タブ③：インタラクティブグラフ =====
 var v2PlotMode = 'avg'; // 'avg' or 'ts'
-var v2CurrentMonth = null; // {year, month} or null（全期間）
+var v2ScaleMode = 'raw'; // 'raw' or 'center'
+var v2CurrentMonth = null; // null=直近30日, {year,month}=月指定
+var v2CurrentYear = new Date().getFullYear();
+var v2RecentMode = true; // true=直近30日モード
 
 function v2SetPlot(mode, btn) {
   v2PlotMode = mode;
@@ -1895,7 +1921,45 @@ function v2SetPlot(mode, btn) {
   renderVTab2();
 }
 
+function v2SetScale(mode, btn) {
+  v2ScaleMode = mode;
+  document.querySelectorAll('#vctrl-center2 .vperiod-btn').forEach(function(b){b.classList.remove('sel');});
+  if(btn) btn.classList.add('sel');
+  renderVTab2();
+}
+
+function v2SetRecent() {
+  v2RecentMode = true;
+  v2CurrentMonth = null;
+  document.querySelectorAll('.v2-mbtn').forEach(function(b){b.classList.remove('sel');});
+  document.getElementById('v2-recent-btn').style.background='#6b8cce';
+  document.getElementById('v2-recent-btn').style.borderColor='#6b8cce';
+  renderVTab2();
+}
+
+function v2SetMonth(btn) {
+  v2RecentMode = false;
+  var m = parseInt(btn.dataset.month) - 1; // 0-indexed
+  v2CurrentMonth = {year: v2CurrentYear, month: m};
+  document.querySelectorAll('.v2-mbtn').forEach(function(b){b.classList.remove('sel');});
+  btn.classList.add('sel');
+  document.getElementById('v2-recent-btn').style.background='#fff';
+  document.getElementById('v2-recent-btn').style.borderColor='#6b8cce';
+  renderVTab2();
+}
+
+function v2YearNav(dir) {
+  v2CurrentYear += dir;
+  var yearLabel = document.getElementById('v2-year-label');
+  if(yearLabel) yearLabel.textContent = v2CurrentYear+'年';
+  if(v2CurrentMonth) {
+    v2CurrentMonth.year = v2CurrentYear;
+    renderVTab2();
+  }
+}
+
 function v2MonthNav(dir) {
+  // 後方互換のため残す
   if(!v2CurrentMonth) {
     var now = new Date();
     v2CurrentMonth = {year: now.getFullYear(), month: now.getMonth()};
@@ -1903,8 +1967,6 @@ function v2MonthNav(dir) {
   v2CurrentMonth.month += dir;
   if(v2CurrentMonth.month > 11){ v2CurrentMonth.month=0; v2CurrentMonth.year++; }
   if(v2CurrentMonth.month < 0){ v2CurrentMonth.month=11; v2CurrentMonth.year--; }
-  // 期間ボタンを全解除
-  document.querySelectorAll('#vpanel-2 .vperiod-btn[data-days]').forEach(function(b){b.classList.remove('sel');});
   renderVTab2();
 }
 
@@ -1927,6 +1989,9 @@ function onVPart2Change(){
   document.getElementById('vctrl-q2').style.display = 'flex';
   document.getElementById('vctrl-wx2').style.display = 'flex';
   document.getElementById('vctrl-plot2').style.display = 'flex';
+  document.getElementById('vctrl-center2').style.display = 'flex';
+  // 年ラベル初期化
+  var yl=document.getElementById('v2-year-label');if(yl)yl.textContent=v2CurrentYear+'年';
   renderVTab2();
 }
 
@@ -1949,25 +2014,24 @@ function renderVTab2(){
   if(qFilter==='__multi__'){ renderVTab2Multi(part, wxKey); return; }
   var nrsLabel = qFilter==='__all__' ? 'NRS（全項目平均）' : 'Q'+qFilter+': '+SFMPQ2_S[parseInt(qFilter)-1];
 
-  // 期間フィルタ：月モードor期間ボタン
+  // 期間フィルタ：直近30日 or 月指定
   var allPartRecs = vRecords.filter(function(r){ return r['部位']===part; });
   var recs, periodLabel='';
-  if(v2CurrentMonth) {
+  if(v2RecentMode || !v2CurrentMonth) {
+    // 直近30日
+    recs = vFilter(allPartRecs, 30);
+    if(!recs.length) recs = allPartRecs;
+    periodLabel = '直近30日';
+  } else {
     var y=v2CurrentMonth.year, m=v2CurrentMonth.month;
     recs = allPartRecs.filter(function(r){
       var d=new Date(String(r['記録日']).replace(/\//g,'-'));
       return d.getFullYear()===y && d.getMonth()===m;
     });
     periodLabel = y+'年 '+(m+1)+'月';
-  } else {
-    var selBtn = document.querySelector('#vpanel-2 .vperiod-btn.sel[data-days]');
-    var days = selBtn ? parseInt(selBtn.dataset.days) : 30;
-    recs = days===0 ? allPartRecs : vFilter(allPartRecs, days);
-    if(!recs.length) recs = allPartRecs;
-    periodLabel = days===0 ? '全期間' : days+'日間';
   }
   var labelEl=document.getElementById('v2-month-label');
-  if(labelEl) labelEl.textContent=periodLabel;
+  if(labelEl) labelEl.textContent = recs.length ? periodLabel + '（'+recs.length/3|0+'日分）' : periodLabel+'（データなし）';
 
   // タイトル
   var titleEl=document.getElementById('vc-wx-title');
@@ -2045,9 +2109,43 @@ function renderVTab2(){
   function yNrs(v){return PT+iH-(v/10)*iH;}
   function yWx(v){return PT+iH-(v-wxMin)/(wxMax-wxMin)*iH;}
 
-  // グリッド
-  ctx.strokeStyle='#e8edf5';ctx.lineWidth=1;
+  // ===== Raw/Center変換 =====
+  var useCenter = (v2ScaleMode==='center');
+  if(useCenter && plotPoints.length > 0) {
+    // NRS中心化（全plotPointsの平均を引く）
+    var nrsMean = plotPoints.reduce(function(s,p){return s+p.nrs;},0)/plotPoints.length;
+    var wxMean  = plotPoints.reduce(function(s,p){return s+(p.wx||0);},0)/plotPoints.length;
+    plotPoints = plotPoints.map(function(p){
+      return Object.assign({},p,{nrs:+(p.nrs-nrsMean).toFixed(2),wx:p.wx!=null?+(p.wx-wxMean).toFixed(2):null});
+    });
+  }
+
+  // Y軸スケール再計算（中心化時は±範囲に）
+  var yNrsMin=0,yNrsMax=10;
+  if(useCenter){
+    var nrsAbsMax=Math.max.apply(null,plotPoints.map(function(p){return Math.abs(p.nrs);}));
+    nrsAbsMax=Math.max(nrsAbsMax,2);
+    yNrsMin=-Math.ceil(nrsAbsMax+1); yNrsMax=Math.ceil(nrsAbsMax+1);
+  }
+  function yNrs(v){return PT+iH-(v-yNrsMin)/(yNrsMax-yNrsMin)*iH;}
+
+  // グリッド（水平・垂直両方）
+  ctx.strokeStyle='rgba(200,210,230,0.4)';ctx.lineWidth=0.8;
+  // 水平グリッド（5本）
   for(var g=0;g<=5;g++){var y=PT+iH*g/5;ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(PL+iW,y);ctx.stroke();}
+  // 垂直グリッド（日付位置）
+  if(v2PlotMode==='ts'){
+    var _vgDateSet={};plotPoints.forEach(function(p){_vgDateSet[p.dateStr]=true;});
+    Object.keys(_vgDateSet).sort().forEach(function(ds){
+      var x=PL+(Object.keys(_vgDateSet).sort().indexOf(ds))*(iW/(Math.max(1,Object.keys(_vgDateSet).length-1)));
+      ctx.beginPath();ctx.moveTo(x,PT);ctx.lineTo(x,PT+iH);ctx.stroke();
+    });
+  } else {
+    var every_vg=Math.max(1,Math.floor(plotPoints.length/8));
+    plotPoints.forEach(function(p,i){
+      if(i%every_vg===0){var x=xp(i);ctx.beginPath();ctx.moveTo(x,PT);ctx.lineTo(x,PT+iH);ctx.stroke();}
+    });
+  }
 
   // 軸ラベル
   ctx.font='11px sans-serif';
@@ -2143,24 +2241,47 @@ function renderVTab2(){
     ctx.fillStyle='#e07070';ctx.textAlign='right';ctx.fillText('● '+wxKey,W-PR,18);
   }
 
-  // ツールチップ
-  canvas._pp=plotPoints;canvas._xp=xp;canvas._yNrs=yNrs;canvas._yWx=yWx;
-  canvas._meta={wxKey:wxKey,nrsLabel:nrsLabel};
+  // ツールチップ（縦グリッド対応：グラフエリア内ならどこでも反応）
+  canvas._pp=plotPoints;canvas._xp=xp;canvas._wxKey=wxKey;canvas._nrsLabel=nrsLabel;
+  canvas._useCenter=useCenter;canvas._PL=PL;canvas._iW=iW;canvas._PT=PT;canvas._iH=iH;
   canvas.onmousemove=function(e){
     var rect=canvas.getBoundingClientRect();
     var mx=(e.clientX-rect.left)*(canvas.width/rect.width);
-    var best=null,bestDist=Infinity;
-    canvas._pp.forEach(function(p,i){var d=Math.abs(mx-canvas._xp(i));if(d<bestDist){bestDist=d;best={p:p,i:i};}});
+    var my=(e.clientY-rect.top)*(canvas.height/rect.height);
     var tip=document.getElementById('v2-tooltip');
-    if(best&&bestDist<30){
+    // グラフエリア外は非表示
+    if(mx<canvas._PL-10||mx>canvas._PL+canvas._iW+10||my<canvas._PT||my>canvas._PT+canvas._iH){
+      tip.style.display='none';return;
+    }
+    // X軸方向の最近傍点（Y位置は問わない→縦線ホバー）
+    var best=null,bestDist=Infinity;
+    canvas._pp.forEach(function(p,i){
+      var d=Math.abs(mx-canvas._xp(i));
+      if(d<bestDist){bestDist=d;best={p:p,i:i};}
+    });
+    if(best&&bestDist<50){
       var p=best.p;
-      tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+p.dateStr+(p.ts&&p.ts!=='avg'?' '+p.ts:'')+'</div>'
-        +'<div style="color:#6b8cce;">'+canvas._meta.nrsLabel+': <strong>'+p.nrs+'</strong></div>'
-        +'<div style="color:#e07070;">'+canvas._meta.wxKey+': <strong>'+p.wx+'</strong></div>';
-      var left=(canvas._xp(best.i)/canvas.width*rect.width)+10;
-      if(left+160>rect.width) left-=180;
-      tip.style.left=left+'px';tip.style.top='48px';tip.style.display='block';
-    } else { tip.style.display='none'; }
+      var cn=canvas._useCenter?' (中心化)':'';
+      // tsモード：同じ日付の全時間帯を表示
+      var sameDatePts=canvas._pp.filter(function(q){return q.dateStr===p.dateStr;});
+      var tsLines='';
+      if(sameDatePts.length>1){
+        var tsC={'朝':'#f5a623','昼':'#3ab8c8','晩':'#7c6fd0'};
+        sameDatePts.forEach(function(q){
+          tsLines+='<div style="color:'+(tsC[q.ts]||'#6b8cce')+';">'+q.ts+' NRS: <strong>'+q.nrs+'</strong></div>';
+        });
+      } else {
+        tsLines='<div style="color:#6b8cce;">'+canvas._nrsLabel+cn+': <strong>'+p.nrs+'</strong></div>';
+      }
+      tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+p.dateStr+'</div>'
+        +tsLines
+        +(p.wx!=null?'<div style="color:rgba(200,60,60,0.9);">🌡️ '+canvas._wxKey+cn+': <strong>'+p.wx+'</strong></div>':'');
+      var left=canvas._xp(best.i)*(rect.width/canvas.width)+10;
+      if(left+180>rect.width) left-=195;
+      tip.style.left=left+'px';tip.style.top='40px';tip.style.display='block';
+    } else {
+      tip.style.display='none';
+    }
   };
   canvas.onmouseleave=function(){document.getElementById('v2-tooltip').style.display='none';};
 }
