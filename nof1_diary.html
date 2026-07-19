@@ -2106,28 +2106,36 @@ function renderVTab2(){
   var wxRange=wxMax-wxMin||1;
   wxMin=Math.floor(wxMin-wxRange*0.1);wxMax=Math.ceil(wxMax+wxRange*0.1);
   function xp(i){return PL+(plotPoints.length>1?i*iW/(plotPoints.length-1):iW/2);}
-  function yNrs(v){return PT+iH-(v/10)*iH;}
   function yWx(v){return PT+iH-(v-wxMin)/(wxMax-wxMin)*iH;}
 
-  // ===== Raw/Center変換 =====
+  // ===== Raw/Center変換（描画前に実施）=====
   var useCenter = (v2ScaleMode==='center');
   if(useCenter && plotPoints.length > 0) {
-    // NRS中心化（全plotPointsの平均を引く）
     var nrsMean = plotPoints.reduce(function(s,p){return s+p.nrs;},0)/plotPoints.length;
-    var wxMean  = plotPoints.reduce(function(s,p){return s+(p.wx||0);},0)/plotPoints.length;
+    var wxMeanC = plotPoints.reduce(function(s,p){return s+(p.wx!=null?p.wx:0);},0)/plotPoints.filter(function(p){return p.wx!=null;}).length;
     plotPoints = plotPoints.map(function(p){
-      return Object.assign({},p,{nrs:+(p.nrs-nrsMean).toFixed(2),wx:p.wx!=null?+(p.wx-wxMean).toFixed(2):null});
+      return Object.assign({},p,{
+        nrs: +(p.nrs-nrsMean).toFixed(2),
+        wx:  p.wx!=null ? +(p.wx-wxMeanC).toFixed(2) : null
+      });
     });
+    // 中心化後に気象スケールを再計算
+    var wxVals2=plotPoints.map(function(p){return p.wx;}).filter(function(v){return v!=null;});
+    if(wxVals2.length){
+      wxMin=Math.min.apply(null,wxVals2); wxMax=Math.max.apply(null,wxVals2);
+      var wxR2=wxMax-wxMin||1;
+      wxMin=+(wxMin-wxR2*0.3).toFixed(1); wxMax=+(wxMax+wxR2*0.3).toFixed(1);
+    }
   }
 
-  // Y軸スケール再計算（中心化時は±範囲に）
-  var yNrsMin=0,yNrsMax=10;
+  // Y軸スケール（var形式で1回だけ定義）
+  var yNrsMin=0, yNrsMax=10;
   if(useCenter){
     var nrsAbsMax=Math.max.apply(null,plotPoints.map(function(p){return Math.abs(p.nrs);}));
-    nrsAbsMax=Math.max(nrsAbsMax,2);
-    yNrsMin=-Math.ceil(nrsAbsMax+1); yNrsMax=Math.ceil(nrsAbsMax+1);
+    nrsAbsMax=Math.max(nrsAbsMax,1);
+    yNrsMin=-(Math.ceil(nrsAbsMax)+1); yNrsMax=Math.ceil(nrsAbsMax)+1;
   }
-  function yNrs(v){return PT+iH-(v-yNrsMin)/(yNrsMax-yNrsMin)*iH;}
+  var yNrs=function(v){return PT+iH-(v-yNrsMin)/(yNrsMax-yNrsMin)*iH;};
 
   // グリッド（水平・垂直両方）
   ctx.strokeStyle='rgba(200,210,230,0.4)';ctx.lineWidth=0.8;
@@ -2147,12 +2155,22 @@ function renderVTab2(){
     });
   }
 
-  // 軸ラベル
+  // 軸ラベル（Raw/中心化両対応）
   ctx.font='11px sans-serif';
+  // 左Y軸（NRS）
   ctx.fillStyle='#6b8cce';ctx.textAlign='right';
-  for(var g=0;g<=5;g++){ctx.fillText(10-g*2,PL-6,PT+iH*g/5+4);}
-  ctx.fillStyle='#e07070';ctx.textAlign='left';
+  for(var g=0;g<=5;g++){
+    var nv=+(yNrsMax-(yNrsMax-yNrsMin)*g/5).toFixed(1);
+    ctx.fillText(nv,PL-6,PT+iH*g/5+4);
+  }
+  // 右Y軸（気象）
+  ctx.fillStyle='rgba(200,60,60,0.9)';ctx.textAlign='left';
   for(var g=0;g<=5;g++){ctx.fillText((wxMax-(wxMax-wxMin)*g/5).toFixed(1),PL+iW+6,PT+iH*g/5+4);}
+  // 中心化時ゼロライン
+  if(useCenter && yNrsMin<0 && yNrsMax>0){
+    ctx.strokeStyle='rgba(100,120,180,0.35)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);
+    var y0c=yNrs(0);ctx.beginPath();ctx.moveTo(PL,y0c);ctx.lineTo(PL+iW,y0c);ctx.stroke();ctx.setLineDash([]);
+  }
 
   // X軸ラベル（日平均モードのみ・tsモードは後で日付ベースで描画）
   if(v2PlotMode!=='ts'){
