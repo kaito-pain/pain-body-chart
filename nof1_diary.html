@@ -2045,8 +2045,11 @@ function renderVTab2(){
   // Canvas描画
   var PL=46,PR=60,PT=28,PB=56;
   var minPxPer=v2PlotMode==='ts'?24:30;
-  var W=Math.max(360,PL+PR+(plotPoints.length-1)*minPxPer);
-  var H=360;
+  // 画面幅に応じてグラフ幅を自動調整
+  var containerW2 = (document.getElementById('v2-canvas').parentNode.clientWidth || 360) - 8;
+  var minW2 = Math.max(containerW2, PL+PR+(plotPoints.length-1)*minPxPer);
+  var W=Math.max(360, minW2);
+  var H=Math.min(400, Math.max(280, Math.round(containerW2 * 0.55)));
   var iW=W-PL-PR,iH=H-PT-PB;
   canvas.width=W;canvas.height=H;
   canvas.style.minWidth=W+'px';
@@ -2168,9 +2171,8 @@ function renderVTab2Multi(part, wxKey){
   var labelEl=document.getElementById('v2-month-label');
   if(labelEl) labelEl.textContent=periodLabel;
   var titleEl=document.getElementById('vc-wx-title');
-  if(titleEl) titleEl.textContent='\uD83C\uDF21\uFE0F 全性質プロファイル（各Q項目）';
+  if(titleEl) titleEl.textContent='🌡️ 全性質プロファイル ＋ '+wxKey;
 
-  // Q項目を特定
   var qNums=[];
   recs.forEach(function(r){
     for(var q=1;q<=22;q++){
@@ -2180,41 +2182,47 @@ function renderVTab2Multi(part, wxKey){
   });
   qNums.sort(function(a,b){return a-b;});
 
-  // プロットモードに応じてプロット点を生成
+  var dateSet={};
+  recs.forEach(function(r){dateSet[String(r['記録日'])]=true;});
+  var allDates=Object.keys(dateSet).sort();
+  var wxByDate={};
+  allDates.forEach(function(ds){
+    var vals=recs.filter(function(r){return String(r['記録日'])===ds&&r[wxKey]!==''&&r[wxKey]!==null&&!isNaN(+r[wxKey]);})
+      .map(function(r){return +r[wxKey];});
+    wxByDate[ds]=vals.length?+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(2):null;
+  });
+  var wxVals=allDates.map(function(d){return wxByDate[d];}).filter(function(v){return v!==null;});
+  var wxMin=wxVals.length?Math.min.apply(null,wxVals):0;
+  var wxMax=wxVals.length?Math.max.apply(null,wxVals):100;
+  var wxRange=wxMax-wxMin||1;
+  wxMin=Math.floor(wxMin-wxRange*0.1); wxMax=Math.ceil(wxMax+wxRange*0.1);
+
   function getPlotPoints(q){
     var pts=[];
     if(v2PlotMode==='ts'){
-      // 朝昼晩別：日付+時間帯でソート
       recs.forEach(function(r){
         var v=r['Q'+q];
         if(v===''||v===null||v===undefined||isNaN(+v)) return;
-        pts.push({label:String(r['記録日']).slice(5)+' '+r['時間帯'],nrs:+v,ts:r['時間帯']||'',dateStr:String(r['記録日']),dateObj:new Date(String(r['記録日']).replace(/\//g,'-'))});
+        pts.push({label:String(r['記録日']).slice(5)+' '+r['時間帯'],nrs:+v,ts:r['時間帯']||'',dateStr:String(r['記録日']),wx:wxByDate[String(r['記録日'])],dateObj:new Date(String(r['記録日']).replace(/\//g,'-'))});
       });
       pts.sort(function(a,b){return a.dateObj-b.dateObj||(TS_ORDER.indexOf(a.ts)-TS_ORDER.indexOf(b.ts));});
     } else {
-      // 日平均
-      var dateSet={};
-      recs.forEach(function(r){dateSet[String(r['記録日'])]=true;});
-      var dates=Object.keys(dateSet).sort();
-      dates.forEach(function(ds){
+      allDates.forEach(function(ds){
         var vals=recs.filter(function(r){return String(r['記録日'])===ds;})
           .map(function(r){return r['Q'+q];})
           .filter(function(v){return v!==''&&v!==null&&v!==undefined&&!isNaN(+v);}).map(Number);
-        if(vals.length) pts.push({label:ds.slice(5),nrs:+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(2),ts:'avg',dateStr:ds});
+        if(vals.length) pts.push({label:ds.slice(5),nrs:+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(2),ts:'avg',dateStr:ds,wx:wxByDate[ds]});
       });
     }
     return pts;
   }
 
-  // メインcanvasを非表示にしてマルチ表示
   var canvasEl=document.getElementById('v2-canvas');
   canvasEl.style.display='none';
   var container=canvasEl.parentNode;
-  var old=container.querySelectorAll('.v2-multi-wrap');
-  old.forEach(function(el){el.remove();});
+  container.querySelectorAll('.v2-multi-wrap').forEach(function(el){el.remove();});
 
   if(!qNums.length){
-    canvasEl.style.display='none';
     var div=document.createElement('div');div.className='v2-multi-wrap';
     div.style.cssText='text-align:center;padding:30px;color:#bbb;';div.textContent='データがありません';
     container.appendChild(div);return;
@@ -2222,11 +2230,16 @@ function renderVTab2Multi(part, wxKey){
 
   var wrap=document.createElement('div');
   wrap.className='v2-multi-wrap';
-  wrap.style.cssText='display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;';
+  wrap.style.cssText='display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;';
   container.appendChild(wrap);
 
-  // スモールグラフ定数
-  var SW=240,SH=200,SPL=32,SPR=12,SPT=32,SPB=36;
+  // レスポンシブ：画面幅に応じてカード幅を決定
+  var screenW=window.innerWidth||360;
+  var cols=screenW>=900?3:screenW>=600?2:1;
+  var cardW=Math.floor((Math.min(screenW,container.offsetWidth||screenW)-14*(cols+1))/cols);
+  cardW=Math.max(220,Math.min(cardW,440));
+  var SW=cardW,SH=Math.round(SW*0.65);
+  var SPL=38,SPR=46,SPT=36,SPB=38;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2234,95 +2247,121 @@ function renderVTab2Multi(part, wxKey){
     var pts=getPlotPoints(q);
 
     var card=document.createElement('div');
-    card.style.cssText='background:#fff;border-radius:10px;padding:8px;box-shadow:0 1px 4px rgba(100,130,200,0.1);position:relative;';
+    card.style.cssText='background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 6px rgba(100,130,200,0.12);position:relative;flex:0 0 auto;';
+    card.style.width=SW+'px';
     wrap.appendChild(card);
 
     var title=document.createElement('div');
-    title.style.cssText='font-size:11px;font-weight:700;color:'+col+';margin-bottom:4px;';
+    title.style.cssText='font-size:12px;font-weight:700;color:'+col+';margin-bottom:6px;';
     title.textContent='Q'+q+': '+SFMPQ2_S[q-1];
     card.appendChild(title);
 
     var cv=document.createElement('canvas');
-    cv.width=SW;cv.height=SH;cv.style.cssText='display:block;';
+    cv.width=SW;cv.height=SH;
+    cv.style.cssText='display:block;width:100%;height:auto;';
     card.appendChild(cv);
 
-    // ツールチップdiv
     var tip=document.createElement('div');
-    tip.style.cssText='display:none;position:absolute;background:rgba(255,255,255,0.97);border:1.5px solid #c5d0e8;border-radius:8px;padding:6px 10px;font-size:11px;pointer-events:none;box-shadow:0 2px 8px rgba(100,130,200,0.15);min-width:120px;z-index:10;';
+    tip.style.cssText='display:none;position:absolute;background:rgba(255,255,255,0.97);border:1.5px solid #c5d0e8;border-radius:8px;padding:6px 10px;font-size:11px;pointer-events:none;box-shadow:0 2px 8px rgba(100,130,200,0.15);min-width:130px;z-index:10;';
     card.appendChild(tip);
 
     if(!pts.length){
       var ctx2=cv.getContext('2d');
-      ctx2.fillStyle='#ccc';ctx2.font='10px sans-serif';ctx2.textAlign='center';
-      ctx2.fillText('データなし',SW/2,SH/2);
-      return;
+      ctx2.fillStyle='#ccc';ctx2.font='11px sans-serif';ctx2.textAlign='center';
+      ctx2.fillText('データなし',SW/2,SH/2);return;
     }
 
     var ctx2=cv.getContext('2d');
     function xp2(i){return SPL+(pts.length>1?i*siW/(pts.length-1):siW/2);}
-    function yv2(v){return SPT+siH-(v/10)*siH;}
+    function yNrs2(v){return SPT+siH-(v/10)*siH;}
+    function yWx2(v){return wxMax===wxMin?SPT+siH/2:SPT+siH-(v-wxMin)/(wxMax-wxMin)*siH;}
 
-    // グリッド＋NRS軸ラベル
+    // グリッド
     ctx2.strokeStyle='#eef0f5';ctx2.lineWidth=1;
     [0,2,4,6,8,10].forEach(function(v){
-      var y=yv2(v);ctx2.beginPath();ctx2.moveTo(SPL,y);ctx2.lineTo(SPL+siW,y);ctx2.stroke();
-      ctx2.fillStyle='#aaa';ctx2.font='9px sans-serif';ctx2.textAlign='right';ctx2.fillText(v,SPL-3,y+3);
+      var y=yNrs2(v);ctx2.beginPath();ctx2.moveTo(SPL,y);ctx2.lineTo(SPL+siW,y);ctx2.stroke();
     });
 
-    // X軸ラベル（最初と最後）
+    // 左Y軸（NRS）
+    ctx2.font='9px sans-serif';ctx2.fillStyle='#6b8cce';ctx2.textAlign='right';
+    [0,5,10].forEach(function(v){ctx2.fillText(v,SPL-5,yNrs2(v)+3);});
+    ctx2.save();ctx2.translate(12,SPT+siH/2);ctx2.rotate(-Math.PI/2);
+    ctx2.textAlign='center';ctx2.fillText('NRS',0,0);ctx2.restore();
+
+    // 右Y軸（気象）
+    ctx2.fillStyle='#e07070';ctx2.font='9px sans-serif';ctx2.textAlign='left';
+    [wxMin,Math.round((wxMin+wxMax)/2),wxMax].forEach(function(v){
+      ctx2.fillText(v,SPL+siW+5,yWx2(v)+3);
+    });
+    ctx2.save();ctx2.translate(SW-8,SPT+siH/2);ctx2.rotate(Math.PI/2);
+    ctx2.textAlign='center';ctx2.fillText(wxKey.slice(0,6),0,0);ctx2.restore();
+
+    // X軸ラベル
     ctx2.fillStyle='#888';ctx2.font='9px sans-serif';ctx2.textAlign='center';
     if(pts.length>0) ctx2.fillText(pts[0].label,xp2(0),SH-8);
     if(pts.length>1) ctx2.fillText(pts[pts.length-1].label,xp2(pts.length-1),SH-8);
 
-    // 折れ線（朝昼晩別の場合は色分け・増悪時は✦）
+    // 気象折れ線（点線・右軸）
+    if(wxVals.length>0){
+      ctx2.beginPath();ctx2.strokeStyle='rgba(224,112,112,0.55)';ctx2.lineWidth=1.5;ctx2.setLineDash([4,3]);
+      var first=true;
+      pts.forEach(function(p,i){
+        if(p.wx===null||p.wx===undefined){first=true;return;}
+        var x=xp2(i),y=yWx2(p.wx);
+        if(first){ctx2.moveTo(x,y);first=false;}else{ctx2.lineTo(x,y);}
+      });
+      ctx2.stroke();ctx2.setLineDash([]);
+    }
+
+    // NRS折れ線
     if(v2PlotMode==='ts'){
       TS_ORDER.forEach(function(ts){
         var tsPts=pts.map(function(p,i){return{p:p,i:i};}).filter(function(o){return o.p.ts===ts;});
         if(!tsPts.length) return;
         var tc=TS_COLORS[ts];
-        ctx2.beginPath();ctx2.strokeStyle=tc;ctx2.lineWidth=1.5;
-        tsPts.forEach(function(o,fi){var x=xp2(o.i),y=yv2(o.p.nrs);fi===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);});
+        ctx2.beginPath();ctx2.strokeStyle=tc;ctx2.lineWidth=2;
+        tsPts.forEach(function(o,fi){var x=xp2(o.i),y=yNrs2(o.p.nrs);fi===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);});
         ctx2.stroke();
-        tsPts.forEach(function(o){ctx2.beginPath();ctx2.arc(xp2(o.i),yv2(o.p.nrs),3,0,Math.PI*2);ctx2.fillStyle=tc;ctx2.fill();});
+        tsPts.forEach(function(o){ctx2.beginPath();ctx2.arc(xp2(o.i),yNrs2(o.p.nrs),3.5,0,Math.PI*2);ctx2.fillStyle=tc;ctx2.fill();});
       });
-      pts.filter(function(p){return p.ts==='増悪時';}).forEach(function(p,i2){
-        var i=pts.indexOf(p);
-        ctx2.fillStyle='#c0392b';ctx2.font='bold 14px sans-serif';ctx2.textAlign='center';
-        ctx2.fillText('✦',xp2(i),yv2(p.nrs)+5);
+      pts.filter(function(p){return p.ts==='増悪時';}).forEach(function(p){
+        ctx2.fillStyle='#c0392b';ctx2.font='bold 16px sans-serif';ctx2.textAlign='center';
+        ctx2.fillText('\u2726',xp2(pts.indexOf(p)),yNrs2(p.nrs)+6);
       });
     } else {
       ctx2.beginPath();ctx2.strokeStyle=col;ctx2.lineWidth=2;
-      pts.forEach(function(p,i){var x=xp2(i),y=yv2(p.nrs);i===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);});
+      pts.forEach(function(p,i){var x=xp2(i),y=yNrs2(p.nrs);i===0?ctx2.moveTo(x,y):ctx2.lineTo(x,y);});
       ctx2.stroke();
-      pts.forEach(function(p,i){ctx2.beginPath();ctx2.arc(xp2(i),yv2(p.nrs),3,0,Math.PI*2);ctx2.fillStyle=col;ctx2.fill();});
+      pts.forEach(function(p,i){ctx2.beginPath();ctx2.arc(xp2(i),yNrs2(p.nrs),3.5,0,Math.PI*2);ctx2.fillStyle=col;ctx2.fill();});
     }
 
     // 平均値
-    var nonNull=pts.map(function(p){return p.nrs;});
-    var avg=nonNull.length?+(nonNull.reduce(function(a,b){return a+b;})/nonNull.length).toFixed(1):'-';
+    var vals=pts.map(function(p){return p.nrs;});
+    var avg=+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(1);
     ctx2.fillStyle=col;ctx2.font='bold 10px sans-serif';ctx2.textAlign='right';
-    ctx2.fillText('平均:'+avg,SW-SPR,16);
+    ctx2.fillText('平均:'+avg,SPL+siW,SPT-10);
 
-    // ツールチップ（mousemove）
-    cv._pts=pts;cv._xp2=xp2;
+    // ツールチップ
+    cv._pts=pts;cv._xp2=xp2;cv._col=col;cv._wxKey=wxKey;
     cv.addEventListener('mousemove',function(e){
       var rect=cv.getBoundingClientRect();
       var mx=(e.clientX-rect.left)*(cv.width/rect.width);
       var best=null,bestD=Infinity;
       cv._pts.forEach(function(p,i){var d=Math.abs(mx-cv._xp2(i));if(d<bestD){bestD=d;best={p:p,i:i};}});
-      if(best&&bestD<25){
+      if(best&&bestD<30){
         var p=best.p;
-        tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:3px;">'+p.label+'</div>'
-          +'<div style="color:'+col+';">NRS: <strong>'+p.nrs+'</strong></div>'
-          +(p.ts&&p.ts!=='avg'?'<div style="color:#888;">'+p.ts+'</div>':'');
-        var left=cv._xp2(best.i)/cv.width*rect.width+8;
-        if(left+130>rect.width) left-=145;
-        tip.style.left=left+'px';tip.style.top='30px';tip.style.display='block';
-      } else { tip.style.display='none'; }
+        tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:3px;">📅 '+p.label+'</div>'
+          +'<div style="color:'+cv._col+';">NRS: <strong>'+p.nrs+'</strong></div>'
+          +(p.wx!==null&&p.wx!==undefined?'<div style="color:#e07070;">'+cv._wxKey.slice(0,12)+': <strong>'+p.wx+'</strong></div>':'');
+        var left=cv._xp2(best.i)/cv.width*rect.width+10;
+        if(left+150>rect.width) left-=165;
+        tip.style.left=left+'px';tip.style.top='36px';tip.style.display='block';
+      } else {tip.style.display='none';}
     });
-    cv.addEventListener('mouseleave',function(){ tip.style.display='none'; });
+    cv.addEventListener('mouseleave',function(){tip.style.display='none';});
   });
 }
+
 
 function renderVTab3(){
   var days=vPeriodDays[3]||0;
