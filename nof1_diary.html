@@ -667,40 +667,43 @@
           <button class="vperiod-btn" data-days="0" onclick="setVPeriod(this,2)">全期間</button>
         </div>
       </div>
-      <!-- コントロール -->
-      <div class="vctrl">
-        <div class="vctrl-label">部位：</div>
-        <select class="vctrl-select" id="vpart-2" onchange="onVPart2Change()"></select>
-      </div>
-      <div class="vctrl" id="vctrl-q2" style="display:none;">
-        <div class="vctrl-label">性質：</div>
-        <select class="vctrl-select" id="vq-select" onchange="renderVTab2()">
-          <option value="__all__">全項目の平均</option>
-        </select>
-      </div>
-      <div class="vctrl" id="vctrl-wx2" style="display:none;">
-        <div class="vctrl-label">気象：</div>
-        <select class="vctrl-select" id="vwx-select" onchange="renderVTab2()">
-          <option value="om_気圧平均(hPa)">気圧・平均 (hPa)</option>
-          <option value="om_Δ気圧(hPa)">気圧・変動幅Δ (hPa)</option>
-          <option value="om_気温平均(℃)">気温・平均 (℃)</option>
-          <option value="om_湿度平均(%)">湿度・平均 (%)</option>
-          <option value="om_風速平均(km/h)">風速・平均 (km/h)</option>
-          <option value="om_雲量平均(%)">雲量・平均 (%)</option>
-          <option value="amd_海面気圧(hPa)">気圧・アメダス実測 (hPa)</option>
-          <option value="amd_気温(℃)">気温・アメダス実測 (℃)</option>
-        </select>
-      </div>
-      <div class="vctrl" id="vctrl-plot2" style="display:none;">
-        <div class="vctrl-label">プロット：</div>
-        <div class="vperiod-btns">
-          <button class="vperiod-btn sel" id="v2-plot-avg" onclick="v2SetPlot('avg',this)">日平均</button>
-          <button class="vperiod-btn" id="v2-plot-ts" onclick="v2SetPlot('ts',this)">朝昼晩別</button>
+      <!-- コントロール（横並び） -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="vctrl-label" style="white-space:nowrap;">部位：</span>
+          <select class="vctrl-select" id="vpart-2" onchange="onVPart2Change()"></select>
+        </div>
+        <div id="vctrl-q2" style="display:none;align-items:center;gap:6px;display:none;">
+          <span class="vctrl-label" style="white-space:nowrap;">性質：</span>
+          <select class="vctrl-select" id="vq-select" onchange="renderVTab2()">
+            <option value="__all__">全項目の平均</option>
+            <option value="__multi__">全項目を表示</option>
+          </select>
+        </div>
+        <div id="vctrl-wx2" style="display:none;align-items:center;gap:6px;">
+          <span class="vctrl-label" style="white-space:nowrap;">気象：</span>
+          <select class="vctrl-select" id="vwx-select" onchange="renderVTab2()">
+            <option value="om_気圧平均(hPa)">気圧・平均 (hPa)</option>
+            <option value="om_Δ気圧(hPa)">気圧・変動幅Δ (hPa)</option>
+            <option value="om_気温平均(℃)">気温・平均 (℃)</option>
+            <option value="om_湿度平均(%)">湿度・平均 (%)</option>
+            <option value="om_風速平均(km/h)">風速・平均 (km/h)</option>
+            <option value="om_雲量平均(%)">雲量・平均 (%)</option>
+            <option value="amd_海面気圧(hPa)">気圧・アメダス実測 (hPa)</option>
+            <option value="amd_気温(℃)">気温・アメダス実測 (℃)</option>
+          </select>
+        </div>
+        <div id="vctrl-plot2" style="display:none;align-items:center;gap:6px;">
+          <span class="vctrl-label" style="white-space:nowrap;">プロット：</span>
+          <div class="vperiod-btns">
+            <button class="vperiod-btn sel" id="v2-plot-avg" onclick="v2SetPlot('avg',this)">日平均</button>
+            <button class="vperiod-btn" id="v2-plot-ts" onclick="v2SetPlot('ts',this)">朝昼晩別</button>
+          </div>
         </div>
       </div>
       <!-- グラフ -->
-      <div class="vcard" style="position:relative;overflow:hidden;">
-        <div id="vc-wx-title" style="font-size:13px;font-weight:700;color:#3a5fa0;margin-bottom:8px;"></div>
+      <div class="vcard" style="position:relative;overflow:hidden;padding:16px;">
+        <div id="vc-wx-title" style="font-size:13px;font-weight:700;color:#3a5fa0;margin-bottom:10px;"></div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <canvas id="v2-canvas" style="display:block;"></canvas>
         </div>
@@ -1947,9 +1950,9 @@ function onVPart2Change(){
   var qSel = document.getElementById('vq-select');
   qSel.innerHTML = '<option value="__all__">全項目の平均</option>' +
     qNums.map(function(n){ return '<option value="'+n+'">Q'+n+': '+SFMPQ2_S[n-1]+'</option>'; }).join('');
-  document.getElementById('vctrl-q2').style.display = '';
-  document.getElementById('vctrl-wx2').style.display = '';
-  document.getElementById('vctrl-plot2').style.display = '';
+  document.getElementById('vctrl-q2').style.display = 'flex';
+  document.getElementById('vctrl-wx2').style.display = 'flex';
+  document.getElementById('vctrl-plot2').style.display = 'flex';
   renderVTab2();
 }
 
@@ -1960,6 +1963,9 @@ function renderVTab2(){
   var qFilter = qSel ? qSel.value : '__all__';
   var wxKey   = document.getElementById('vwx-select').value;
   var SFMPQ2_S=['ずきんずきん','ピーンと走る','刃物で刺される','鋭い','ひきつる','かじられる','焼けるような','うずく','重苦しい','触ると痛い','割れるような','くたくた','気分が悪い','恐ろしい','拷問のよう','電気が走る','凍てつく','貫くような','触れると痛む','むずがゆい','ちくちく','麻痺/痺れ'];
+  var Q_COLORS=['#e07070','#6b8cce','#70b870','#e0a040','#9070d0','#50b8d0','#d07090','#80b850','#c060c0','#60b0c0'];
+  // __multi__モード：全項目を個別の折れ線で表示
+  if(qFilter==='__multi__'){ renderVTab2Multi(part, wxKey); return; }
   var nrsLabel = qFilter==='__all__' ? 'NRS（全項目平均）' : 'Q'+qFilter+': '+SFMPQ2_S[parseInt(qFilter)-1];
 
   // 期間フィルタ：月モードor期間ボタン
@@ -2032,7 +2038,7 @@ function renderVTab2(){
   var PL=46,PR=60,PT=28,PB=56;
   var minPxPer=v2PlotMode==='ts'?24:30;
   var W=Math.max(340,PL+PR+(plotPoints.length-1)*minPxPer);
-  var H=220;
+  var H=280;
   var iW=W-PL-PR,iH=H-PT-PB;
   canvas.width=W;canvas.height=H;
   canvas.style.minWidth=W+'px';
@@ -2116,6 +2122,193 @@ function renderVTab2(){
         +'<div style="color:#e07070;">'+canvas._meta.wxKey+': <strong>'+p.wx+'</strong></div>';
       var left=(canvas._xp(best.i)/canvas.width*rect.width)+10;
       if(left+160>rect.width) left-=180;
+      tip.style.left=left+'px';tip.style.top='48px';tip.style.display='block';
+    } else { tip.style.display='none'; }
+  };
+  canvas.onmouseleave=function(){document.getElementById('v2-tooltip').style.display='none';};
+}
+
+
+function renderVTab2Multi(part, wxKey){
+  var SFMPQ2_S=['ずきんずきん','ピーンと走る','刃物で刺される','鋭い','ひきつる','かじられる','焼けるような','うずく','重苦しい','触ると痛い','割れるような','くたくた','気分が悪い','恐ろしい','拷問のよう','電気が走る','凍てつく','貫くような','触れると痛む','むずがゆい','ちくちく','麻痺/痺れ'];
+  var Q_COLORS=['#e07070','#6b8cce','#70b870','#e0a040','#9070d0','#50b8d0','#d07090','#80b850','#c060c0','#60b0c0','#b0803a','#607880'];
+
+  // 期間フィルタ
+  var allPartRecs = vRecords.filter(function(r){ return r['部位']===part; });
+  var recs, periodLabel='';
+  if(v2CurrentMonth) {
+    var y=v2CurrentMonth.year, m=v2CurrentMonth.month;
+    recs = allPartRecs.filter(function(r){
+      var d=new Date(String(r['記録日']).replace(/\//g,'-'));
+      return d.getFullYear()===y && d.getMonth()===m;
+    });
+    periodLabel = y+'年 '+(m+1)+'月';
+  } else {
+    var selBtn = document.querySelector('#vpanel-2 .vperiod-btn.sel[data-days]');
+    var days = selBtn ? parseInt(selBtn.dataset.days) : 30;
+    recs = days===0 ? allPartRecs : vFilter(allPartRecs, days);
+    if(!recs.length) recs = allPartRecs;
+    periodLabel = days===0 ? '全期間' : days+'日間';
+  }
+  var labelEl=document.getElementById('v2-month-label');
+  if(labelEl) labelEl.textContent=periodLabel;
+
+  // Q項目を特定
+  var qNums=[];
+  recs.forEach(function(r){
+    for(var q=1;q<=22;q++){
+      var v=r['Q'+q];
+      if(v!==''&&v!==null&&v!==undefined&&!isNaN(+v)&&+v>=0&&qNums.indexOf(q)<0) qNums.push(q);
+    }
+  });
+  qNums.sort(function(a,b){return a-b;});
+
+  // 日付リスト
+  var dateSet={};
+  recs.forEach(function(r){ dateSet[String(r['記録日'])]=true; });
+  var dates=Object.keys(dateSet).sort();
+
+  if(!dates.length || !qNums.length){
+    var canvas=document.getElementById('v2-canvas');
+    var ctx=canvas.getContext('2d');
+    canvas.width=340;canvas.height=160;
+    ctx.clearRect(0,0,340,160);
+    ctx.fillStyle='#bbb';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('データがありません',170,80);
+    return;
+  }
+
+  // Q項目×日付の平均を集計
+  var qData={}; // qData[q][date] = avg
+  qNums.forEach(function(q){
+    qData[q]={};
+    dates.forEach(function(ds){
+      var vals=recs.filter(function(r){return String(r['記録日'])===ds;})
+        .map(function(r){return r['Q'+q];})
+        .filter(function(v){return v!==''&&v!==null&&v!==undefined&&!isNaN(+v);})
+        .map(Number);
+      qData[q][ds]=vals.length?+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(2):null;
+    });
+  });
+
+  // 気象データ（日平均）
+  var wxData={};
+  dates.forEach(function(ds){
+    var vals=recs.filter(function(r){
+      return String(r['記録日'])===ds&&r[wxKey]!==''&&r[wxKey]!==null&&!isNaN(+r[wxKey]);
+    }).map(function(r){return +r[wxKey];});
+    wxData[ds]=vals.length?+(vals.reduce(function(a,b){return a+b;})/vals.length).toFixed(2):null;
+  });
+  var wxVals=dates.map(function(d){return wxData[d];}).filter(function(v){return v!==null;});
+  var wxMin=Math.min.apply(null,wxVals)||0, wxMax=Math.max.apply(null,wxVals)||100;
+  var wxRange=wxMax-wxMin||1;
+  wxMin=Math.floor(wxMin-wxRange*0.1); wxMax=Math.ceil(wxMax+wxRange*0.1);
+
+  // タイトル
+  var titleEl=document.getElementById('vc-wx-title');
+  if(titleEl) titleEl.textContent='🌡️ 全性質プロファイル ＋ '+wxKey;
+
+  // Canvas
+  var PL=46,PR=60,PT=28,PB=56+qNums.length*14;
+  var W=Math.max(340,PL+PR+(dates.length-1)*36);
+  var H=Math.max(300, 280+qNums.length*12);
+  var iW=W-PL-PR, iH=H-PT-PB;
+  var canvas=document.getElementById('v2-canvas');
+  var ctx=canvas.getContext('2d');
+  canvas.width=W;canvas.height=H;
+  canvas.style.minWidth=W+'px';
+  ctx.clearRect(0,0,W,H);
+
+  function xp(i){return PL+(dates.length>1?i*iW/(dates.length-1):iW/2);}
+  function yNrs(v){return PT+iH-(v/10)*iH;}
+  function yWx(v){return PT+iH-(v-wxMin)/(wxMax-wxMin)*iH;}
+
+  // グリッド
+  ctx.strokeStyle='#e8edf5';ctx.lineWidth=1;
+  for(var g=0;g<=5;g++){var y=PT+iH*g/5;ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(PL+iW,y);ctx.stroke();}
+
+  // Y軸ラベル
+  ctx.font='11px sans-serif';
+  ctx.fillStyle='#555';ctx.textAlign='right';
+  for(var g=0;g<=5;g++){ctx.fillText(10-g*2,PL-6,PT+iH*g/5+4);}
+  ctx.fillStyle='#e07070';ctx.textAlign='left';
+  for(var g=0;g<=5;g++){ctx.fillText((wxMax-(wxMax-wxMin)*g/5).toFixed(1),PL+iW+6,PT+iH*g/5+4);}
+
+  // X軸ラベル
+  ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';
+  var every=Math.max(1,Math.ceil(dates.length/(iW/30)));
+  dates.forEach(function(ds,i){
+    if(i%every===0||i===dates.length-1){
+      ctx.save();ctx.translate(xp(i),PT+iH+14);ctx.rotate(-0.6);ctx.fillText(ds.slice(5),0,0);ctx.restore();
+    }
+  });
+
+  // 気象折れ線（赤）
+  ctx.beginPath();ctx.strokeStyle='#e07070';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  dates.forEach(function(ds,i){var v=wxData[ds];if(v===null)return;var x=xp(i),y=yWx(v);i===0||wxData[dates[i-1]]===null?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.stroke();ctx.setLineDash([]);
+  dates.forEach(function(ds,i){var v=wxData[ds];if(v===null)return;ctx.beginPath();ctx.arc(xp(i),yWx(v),3,0,Math.PI*2);ctx.fillStyle='rgba(224,112,112,0.6)';ctx.fill();});
+
+  // Q項目ごとの折れ線
+  qNums.forEach(function(q,qi){
+    var col=Q_COLORS[qi%Q_COLORS.length];
+    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;
+    var first=true;
+    dates.forEach(function(ds,i){
+      var v=qData[q][ds];
+      if(v===null){first=true;return;}
+      var x=xp(i),y=yNrs(v);
+      if(first){ctx.moveTo(x,y);first=false;}else{ctx.lineTo(x,y);}
+    });
+    ctx.stroke();
+    dates.forEach(function(ds,i){
+      var v=qData[q][ds];
+      if(v===null) return;
+      ctx.beginPath();ctx.arc(xp(i),yNrs(v),4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+    });
+  });
+
+  // 凡例（グラフ下）
+  var legY=PT+iH+PB-qNums.length*14+4;
+  var legX=PL;
+  // 気象
+  ctx.fillStyle='#e07070';ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.beginPath();ctx.moveTo(legX,legY+4);ctx.lineTo(legX+16,legY+4);ctx.strokeStyle='#e07070';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillText(wxKey.slice(0,12), legX+20, legY+8);
+  // Q項目
+  qNums.forEach(function(q,qi){
+    var col=Q_COLORS[qi%Q_COLORS.length];
+    var lx=legX+((qi+1)%3===0&&qi>0?0:(qi+1)*((W-PL-PR)/Math.min(qNums.length,3)));
+    var ly=legY+14*Math.floor((qi+1)/3)+14;
+    // 簡易レイアウト：2列
+    var col2 = qi%2===0 ? PL : PL+(W-PL-PR)/2;
+    var row2 = PT+iH+36+Math.floor(qi/2)*14;
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(col2+6,row2,4,0,Math.PI*2);ctx.fill();
+    ctx.fillText('Q'+q+': '+SFMPQ2_S[q-1], col2+14, row2+4);
+  });
+
+  // ツールチップ
+  canvas._dates=dates;canvas._qNums=qNums;canvas._qData=qData;canvas._wxData=wxData;
+  canvas._xp=xp;canvas._meta={wxKey:wxKey,SFMPQ2_S:SFMPQ2_S,Q_COLORS:Q_COLORS};
+  canvas.onmousemove=function(e){
+    var rect=canvas.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    var bestI=0,bestD=Infinity;
+    canvas._dates.forEach(function(ds,i){var d=Math.abs(mx-canvas._xp(i));if(d<bestD){bestD=d;bestI=i;}});
+    var tip=document.getElementById('v2-tooltip');
+    if(bestD<30){
+      var ds=canvas._dates[bestI];
+      var html='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+ds+'</div>';
+      html+='<div style="color:#e07070;">'+canvas._meta.wxKey+': <strong>'+(canvas._wxData[ds]||'-')+'</strong></div>';
+      canvas._qNums.forEach(function(q,qi){
+        var v=canvas._qData[q][ds];
+        var col=canvas._meta.Q_COLORS[qi%canvas._meta.Q_COLORS.length];
+        html+='<div style="color:'+col+';">Q'+q+' '+canvas._meta.SFMPQ2_S[q-1]+': <strong>'+(v!==null?v:'-')+'</strong></div>';
+      });
+      tip.innerHTML=html;
+      var left=canvas._xp(bestI)/canvas.width*rect.width+10;
+      if(left+180>rect.width) left-=200;
       tip.style.left=left+'px';tip.style.top='48px';tip.style.display='block';
     } else { tip.style.display='none'; }
   };
