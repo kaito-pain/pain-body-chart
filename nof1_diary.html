@@ -1953,61 +1953,174 @@ function onVPart2Change(){
   renderVTab2();
 }
 
+
 function renderVTab2(){
-  var part=document.getElementById('vpart-2').value;
-  var qSel=document.getElementById('vq-select');
-  var qFilter=qSel?qSel.value:'__all__'; // '__all__'=全平均、数字=特定Q
-  var wxKey=document.getElementById('vwx-select').value;
-  var partRecs=vRecords.filter(function(r){return r['部位']===part&&r[wxKey]!==''&&r[wxKey]!==null&&r[wxKey]!==undefined&&!isNaN(+r[wxKey]);});
-  var recs=vFilter(partRecs,vPeriodDays[2]);
-  if(!recs.length)recs=partRecs;
-  // 気象データがある日を特定（wx基準）
-  var datesWithWx={};
-  recs.forEach(function(r){if(r[wxKey]!==''&&r[wxKey]!==null&&r[wxKey]!==undefined&&!isNaN(+r[wxKey]))datesWithWx[r['記録日']]=true;});
-  // 同じ部位の全レコード（気象なし含む）からVASを集計
-  var allPartRecs=vRecords.filter(function(r){return r['部位']===part;});
-  var byD={};
-  // まず気象データを登録
+  var part    = document.getElementById('vpart-2').value;
+  var qSel    = document.getElementById('vq-select');
+  var qFilter = qSel ? qSel.value : '__all__';
+  var wxKey   = document.getElementById('vwx-select').value;
+  var SFMPQ2_S=['ずきんずきん','ピーンと走る','刃物で刺される','鋭い','ひきつる','かじられる','焼けるような','うずく','重苦しい','触ると痛い','割れるような','くたくた','気分が悪い','恐ろしい','拷問のよう','電気が走る','凍てつく','貫くような','触れると痛む','むずがゆい','ちくちく','麻痺/痺れ'];
+  var nrsLabel = qFilter==='__all__' ? 'NRS（全項目平均）' : 'Q'+qFilter+': '+SFMPQ2_S[parseInt(qFilter)-1];
+
+  // 期間フィルタ：月モードor期間ボタン
+  var allPartRecs = vRecords.filter(function(r){ return r['部位']===part; });
+  var recs, periodLabel='';
+  if(v2CurrentMonth) {
+    var y=v2CurrentMonth.year, m=v2CurrentMonth.month;
+    recs = allPartRecs.filter(function(r){
+      var d=new Date(String(r['記録日']).replace(/\//g,'-'));
+      return d.getFullYear()===y && d.getMonth()===m;
+    });
+    periodLabel = y+'年 '+(m+1)+'月';
+  } else {
+    var selBtn = document.querySelector('#vpanel-2 .vperiod-btn.sel[data-days]');
+    var days = selBtn ? parseInt(selBtn.dataset.days) : 30;
+    recs = days===0 ? allPartRecs : vFilter(allPartRecs, days);
+    if(!recs.length) recs = allPartRecs;
+    periodLabel = days===0 ? '全期間' : days+'日間';
+  }
+  var labelEl=document.getElementById('v2-month-label');
+  if(labelEl) labelEl.textContent=periodLabel;
+
+  // タイトル
+  var titleEl=document.getElementById('vc-wx-title');
+  if(titleEl) titleEl.textContent='🌡️ '+nrsLabel+' ＋ '+wxKey;
+
+  // データ集計
+  var TS_ORDER=['朝','昼','晩'];
+  var TS_COLORS={'朝':'#f5a623','昼':'#3ab8c8','晩':'#7c6fd0'};
+  var points=[];
   recs.forEach(function(r){
-    var d=r['記録日'];
-    if(!byD[d]) byD[d]={vas:[],wx:[]};
-    if(r[wxKey]!==''&&r[wxKey]!==null&&r[wxKey]!==undefined&&!isNaN(+r[wxKey]))
-      byD[d].wx.push(+r[wxKey]);
+    var wxVal=r[wxKey];
+    if(wxVal===''||wxVal===null||wxVal===undefined||isNaN(+wxVal)) return;
+    var nrsVal;
+    if(qFilter==='__all__'){ nrsVal=vAvgVas(r); }
+    else { var v=r['Q'+parseInt(qFilter)]; nrsVal=(v!==''&&v!==null&&v!==undefined&&!isNaN(+v))?+v:null; }
+    if(nrsVal===null) return;
+    var ds=String(r['記録日']);
+    points.push({dateStr:ds,ts:r['時間帯']||'',nrs:+nrsVal,wx:+wxVal,dateObj:new Date(ds.replace(/\//g,'-'))});
   });
-  // VASは全レコードから（気象の有無に関わらず）集計
-  allPartRecs.forEach(function(r){
-    var d=r['記録日'];
-    if(!datesWithWx[d]) return; // 気象データがない日はスキップ
-    if(!byD[d]) byD[d]={vas:[],wx:[]};
-    var a;
-    if(qFilter==='__all__'){
-      a=vAvgVas(r);
-    } else {
-      var qn=parseInt(qFilter);
-      var v=r['Q'+qn];
-      a=(v!==''&&v!==null&&v!==undefined&&!isNaN(+v))?+v:null;
+  points.sort(function(a,b){return a.dateObj-b.dateObj||(TS_ORDER.indexOf(a.ts)-TS_ORDER.indexOf(b.ts));});
+
+  var canvas=document.getElementById('v2-canvas');
+  var ctx=canvas.getContext('2d');
+  if(!points.length){
+    canvas.width=340;canvas.height=160;
+    ctx.clearRect(0,0,340,160);
+    ctx.fillStyle='#bbb';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('この期間にデータがありません',170,80);
+    return;
+  }
+
+  // プロットモード集計
+  var plotPoints=[];
+  if(v2PlotMode==='ts'){
+    plotPoints=points.map(function(p){return{label:p.dateStr.slice(5)+' '+p.ts,nrs:p.nrs,wx:p.wx,ts:p.ts,dateStr:p.dateStr};});
+  } else {
+    var byD={};
+    points.forEach(function(p){
+      if(!byD[p.dateStr]) byD[p.dateStr]={nrs:[],wx:[]};
+      byD[p.dateStr].nrs.push(p.nrs); byD[p.dateStr].wx.push(p.wx);
+    });
+    Object.keys(byD).sort().forEach(function(ds){
+      var d=byD[ds];
+      plotPoints.push({label:ds.slice(5),nrs:+(d.nrs.reduce(function(a,b){return a+b;})/d.nrs.length).toFixed(2),wx:+(d.wx.reduce(function(a,b){return a+b;})/d.wx.length).toFixed(2),ts:'avg',dateStr:ds});
+    });
+  }
+
+  // Canvas描画
+  var PL=46,PR=60,PT=28,PB=56;
+  var minPxPer=v2PlotMode==='ts'?24:30;
+  var W=Math.max(340,PL+PR+(plotPoints.length-1)*minPxPer);
+  var H=220;
+  var iW=W-PL-PR,iH=H-PT-PB;
+  canvas.width=W;canvas.height=H;
+  canvas.style.minWidth=W+'px';
+  ctx.clearRect(0,0,W,H);
+
+  // スケール
+  var wxVals=plotPoints.map(function(p){return p.wx;});
+  var wxMin=Math.min.apply(null,wxVals),wxMax=Math.max.apply(null,wxVals);
+  var wxRange=wxMax-wxMin||1;
+  wxMin=Math.floor(wxMin-wxRange*0.1);wxMax=Math.ceil(wxMax+wxRange*0.1);
+  function xp(i){return PL+(plotPoints.length>1?i*iW/(plotPoints.length-1):iW/2);}
+  function yNrs(v){return PT+iH-(v/10)*iH;}
+  function yWx(v){return PT+iH-(v-wxMin)/(wxMax-wxMin)*iH;}
+
+  // グリッド
+  ctx.strokeStyle='#e8edf5';ctx.lineWidth=1;
+  for(var g=0;g<=5;g++){var y=PT+iH*g/5;ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(PL+iW,y);ctx.stroke();}
+
+  // 軸ラベル
+  ctx.font='11px sans-serif';
+  ctx.fillStyle='#6b8cce';ctx.textAlign='right';
+  for(var g=0;g<=5;g++){ctx.fillText(10-g*2,PL-6,PT+iH*g/5+4);}
+  ctx.fillStyle='#e07070';ctx.textAlign='left';
+  for(var g=0;g<=5;g++){ctx.fillText((wxMax-(wxMax-wxMin)*g/5).toFixed(1),PL+iW+6,PT+iH*g/5+4);}
+
+  // X軸ラベル
+  ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';
+  var every=Math.max(1,Math.ceil(plotPoints.length/(iW/28)));
+  plotPoints.forEach(function(p,i){
+    if(i%every===0||i===plotPoints.length-1){
+      ctx.save();ctx.translate(xp(i),PT+iH+14);ctx.rotate(-0.6);ctx.fillText(p.label,0,0);ctx.restore();
     }
-    if(a!==null) byD[d].vas.push(a);
   });
-  var dates=vUniqDates(recs);
-  var vasA=dates.map(function(d){var a=byD[d]?byD[d].vas:[];return a.length?+(a.reduce(function(x,y){return x+y;})/a.length).toFixed(2):null;});
-  var wxA=dates.map(function(d){var a=byD[d]?byD[d].wx:[];return a.length?+(a.reduce(function(x,y){return x+y;})/a.length).toFixed(1):null;});
-  var wxNums=wxA.filter(function(v){return v!==null;});
-  var wxRawMin=wxNums.length?Math.min.apply(null,wxNums):0;
-  var wxRawMax=wxNums.length?Math.max.apply(null,wxNums):100;
-  // 上下にマージンを10%追加して見やすく
-  var wxRange=wxRawMax-wxRawMin||1;
-  var wxMin=Math.floor(wxRawMin-wxRange*0.1);
-  var wxMax=Math.ceil(wxRawMax+wxRange*0.1);
-  // 重ね合わせ
-  var SFMPQ2_S2=['ずきんずきん','ピーンと走る','刃物で刺される','鋭い','ひきつる','かじられる','焼けるような','うずく','重苦しい','触ると痛い','割れるような','くたくた','気分が悪い','恐ろしい','拷問のよう','電気が走る','凍てつく','貫くような','触れると痛む','むずがゆい','ちくちく','麻痺/痺れ'];
-  var nrsLabel = qFilter==='__all__' ? 'NRS（全項目平均）' : 'Q'+qFilter+': '+SFMPQ2_S2[parseInt(qFilter)-1];
-  var title = document.getElementById('vc-wx-title');
-  if(title) title.textContent = '🌡️ '+nrsLabel+' ＋ '+wxKey+' 重ね合わせ（1日平均）';
-  svgLine('vc-wx-overlay',[{label:nrsLabel,color:'#6b8cce',data:vasA},{label:wxKey,color:V_WX_COLOR,data:wxA,yAxis:'y2'}],dates,0,wxMin,10,wxMax,wxKey);
 
+  // 気象折れ線
+  ctx.beginPath();ctx.strokeStyle='#e07070';ctx.lineWidth=2;
+  plotPoints.forEach(function(p,i){var x=xp(i),y=yWx(p.wx);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.stroke();
+  plotPoints.forEach(function(p,i){ctx.beginPath();ctx.arc(xp(i),yWx(p.wx),3.5,0,Math.PI*2);ctx.fillStyle='#e07070';ctx.fill();});
+
+  // NRS折れ線
+  if(v2PlotMode==='ts'){
+    TS_ORDER.forEach(function(ts){
+      var pts=plotPoints.map(function(p,i){return{p:p,i:i};}).filter(function(o){return o.p.ts===ts;});
+      if(!pts.length) return;
+      var col=TS_COLORS[ts]||'#6b8cce';
+      ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;
+      pts.forEach(function(o,fi){var x=xp(o.i),y=yNrs(o.p.nrs);fi===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+      ctx.stroke();
+      pts.forEach(function(o){ctx.beginPath();ctx.arc(xp(o.i),yNrs(o.p.nrs),4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();});
+    });
+  } else {
+    ctx.beginPath();ctx.strokeStyle='#6b8cce';ctx.lineWidth=2.5;
+    plotPoints.forEach(function(p,i){var x=xp(i),y=yNrs(p.nrs);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();
+    plotPoints.forEach(function(p,i){ctx.beginPath();ctx.arc(xp(i),yNrs(p.nrs),4,0,Math.PI*2);ctx.fillStyle='#6b8cce';ctx.fill();});
+  }
+
+  // 凡例
+  ctx.font='11px sans-serif';
+  ctx.fillStyle='#6b8cce';
+  ctx.beginPath();ctx.moveTo(PL,16);ctx.lineTo(PL+18,16);ctx.strokeStyle='#6b8cce';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillText(nrsLabel,PL+22,20);
+  ctx.fillStyle='#e07070';
+  ctx.beginPath();ctx.moveTo(W-PR-60,16);ctx.lineTo(W-PR-42,16);ctx.strokeStyle='#e07070';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillText(wxKey.slice(0,10),W-PR-38,20);
+
+  // ツールチップ
+  canvas._pp=plotPoints;canvas._xp=xp;canvas._yNrs=yNrs;canvas._yWx=yWx;
+  canvas._meta={wxKey:wxKey,nrsLabel:nrsLabel};
+  canvas.onmousemove=function(e){
+    var rect=canvas.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    var best=null,bestDist=Infinity;
+    canvas._pp.forEach(function(p,i){var d=Math.abs(mx-canvas._xp(i));if(d<bestDist){bestDist=d;best={p:p,i:i};}});
+    var tip=document.getElementById('v2-tooltip');
+    if(best&&bestDist<30){
+      var p=best.p;
+      tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:4px;">📅 '+p.dateStr+(p.ts&&p.ts!=='avg'?' '+p.ts:'')+'</div>'
+        +'<div style="color:#6b8cce;">'+canvas._meta.nrsLabel+': <strong>'+p.nrs+'</strong></div>'
+        +'<div style="color:#e07070;">'+canvas._meta.wxKey+': <strong>'+p.wx+'</strong></div>';
+      var left=(canvas._xp(best.i)/canvas.width*rect.width)+10;
+      if(left+160>rect.width) left-=180;
+      tip.style.left=left+'px';tip.style.top='48px';tip.style.display='block';
+    } else { tip.style.display='none'; }
+  };
+  canvas.onmouseleave=function(){document.getElementById('v2-tooltip').style.display='none';};
 }
-
 
 function renderVTab3(){
   var days=vPeriodDays[3]||0;
