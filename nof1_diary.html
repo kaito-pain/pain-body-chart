@@ -654,12 +654,26 @@
     </div>
     <!-- タブ③ 気象 -->
     <div class="vpanel" id="vpanel-2">
+      <!-- 月ナビ + 期間ボタン -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="v2MonthNav(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:#4a6fa5;padding:4px 8px;">◀</button>
+          <span id="v2-month-label" style="font-size:15px;font-weight:700;color:#3a5fa0;min-width:90px;text-align:center;"></span>
+          <button onclick="v2MonthNav(+1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:#4a6fa5;padding:4px 8px;">▶</button>
+        </div>
+        <div class="vperiod-btns">
+          <button class="vperiod-btn" data-days="14" onclick="setVPeriod(this,2)">2週</button>
+          <button class="vperiod-btn sel" data-days="30" onclick="setVPeriod(this,2)">1ヶ月</button>
+          <button class="vperiod-btn" data-days="0" onclick="setVPeriod(this,2)">全期間</button>
+        </div>
+      </div>
+      <!-- コントロール -->
       <div class="vctrl">
         <div class="vctrl-label">部位：</div>
         <select class="vctrl-select" id="vpart-2" onchange="onVPart2Change()"></select>
       </div>
       <div class="vctrl" id="vctrl-q2" style="display:none;">
-        <div class="vctrl-label">痛みの性質：</div>
+        <div class="vctrl-label">性質：</div>
         <select class="vctrl-select" id="vq-select" onchange="renderVTab2()">
           <option value="__all__">全項目の平均</option>
         </select>
@@ -667,15 +681,33 @@
       <div class="vctrl" id="vctrl-wx2" style="display:none;">
         <div class="vctrl-label">気象：</div>
         <select class="vctrl-select" id="vwx-select" onchange="renderVTab2()">
-          <option value="気圧(hPa)">気圧 (hPa)</option>
-          <option value="気温(℃)">気温 (℃)</option>
-          <option value="湿度(%)">湿度 (%)</option>
-          <option value="風速(km/h)">風速 (km/h)</option>
-          <option value="雲量(%)">雲量 (%)</option>
+          <option value="om_気圧平均(hPa)">気圧・平均 (hPa)</option>
+          <option value="om_Δ気圧(hPa)">気圧・変動幅Δ (hPa)</option>
+          <option value="om_気温平均(℃)">気温・平均 (℃)</option>
+          <option value="om_湿度平均(%)">湿度・平均 (%)</option>
+          <option value="om_風速平均(km/h)">風速・平均 (km/h)</option>
+          <option value="om_雲量平均(%)">雲量・平均 (%)</option>
+          <option value="amd_海面気圧(hPa)">気圧・アメダス実測 (hPa)</option>
+          <option value="amd_気温(℃)">気温・アメダス実測 (℃)</option>
         </select>
       </div>
-      <div class="vcard"><div class="vcard-title" id="vc-wx-title">🌡️ NRS（1日平均）＋ 気象データ 重ね合わせ</div><div id="vc-wx-overlay" class="svg-chart"></div></div>
-
+      <div class="vctrl" id="vctrl-plot2" style="display:none;">
+        <div class="vctrl-label">プロット：</div>
+        <div class="vperiod-btns">
+          <button class="vperiod-btn sel" id="v2-plot-avg" onclick="v2SetPlot('avg',this)">日平均</button>
+          <button class="vperiod-btn" id="v2-plot-ts" onclick="v2SetPlot('ts',this)">朝昼晩別</button>
+        </div>
+      </div>
+      <!-- グラフ -->
+      <div class="vcard" style="position:relative;overflow:hidden;">
+        <div id="vc-wx-title" style="font-size:13px;font-weight:700;color:#3a5fa0;margin-bottom:8px;"></div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+          <canvas id="v2-canvas" style="display:block;"></canvas>
+        </div>
+        <!-- ツールチップ -->
+        <div id="v2-tooltip" style="display:none;position:absolute;background:rgba(255,255,255,0.97);border:1.5px solid #c5d0e8;border-radius:10px;padding:10px 14px;font-size:12px;pointer-events:none;box-shadow:0 2px 12px rgba(100,130,200,0.15);min-width:150px;z-index:10;"></div>
+      </div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">データ出典：気象庁アメダス・Open-Meteo (JMA GSM)</div>
     </div>
 
     <!-- タブ④：メモ一覧 -->
@@ -1109,6 +1141,9 @@ function selectTimeSlot(slot){
 function updateTabsBySlot(slot){
   var tabs = document.querySelectorAll('.main-tab');
   var panels = document.querySelectorAll('.main-panel');
+  // panels[1]のstyle.displayを毎回リセット（昼→他時間帯への切替バグ防止）
+  panels[1].style.display='';
+
   if(slot==='朝'){
     // 朝：NRS ＋ 睡眠 ＋ メモ
     tabs[0].textContent='📊 痛みのNRS';tabs[0].style.display='';
@@ -1119,11 +1154,11 @@ function updateTabsBySlot(slot){
     document.getElementById('daily-med-section').style.display='none';
     document.getElementById('daily-impact-section').style.display='none';
   } else if(slot==='昼'){
-    // 昼：NRS ＋ メモのみ
+    // 昼：NRS ＋ メモのみ（タブ2を非表示）
     tabs[0].textContent='📊 痛みのNRS';tabs[0].style.display='';
     tabs[1].style.display='none';
+    panels[1].style.display='none'; // タブ非表示と合わせてパネルも非表示
     tabs[2].textContent='📝 メモ';tabs[2].style.display='';
-    panels[1].style.display='none';
   } else if(slot==='増悪時'){
     // 増悪時：NRS ＋ 頓服記録 ＋ メモ
     tabs[0].textContent='📊 痛みのNRS';tabs[0].style.display='';
@@ -1131,7 +1166,7 @@ function updateTabsBySlot(slot){
     tabs[2].textContent='📝 メモ';tabs[2].style.display='';
     document.getElementById('daily-sleep-section').style.display='none';
     document.getElementById('daily-activity-section').style.display='none';
-    document.getElementById('daily-med-section').style.display='';  // 頓服のみ
+    document.getElementById('daily-med-section').style.display='';
     document.getElementById('daily-impact-section').style.display='none';
   } else {
     // 晩：NRS ＋ 日常記録（全項目）＋ メモ
@@ -1578,7 +1613,7 @@ function nextRecord(){
 var V_TS_COLORS={'朝':'#f5a623','昼':'#3ab8c8','晩':'#7c6fd0'};
 var V_SUB_COLORS=['#6b8cce','#e07070','#70b870','#e0a040'];
 var V_WX_COLOR='#e07070';
-var vRecords=[], vPeriodDays=[14,14,0,14], vCharts={};
+var vRecords=[], vPeriodDays=[14,14,30,14], vCharts={};
 
 // SVG折れ線グラフ
 function svgLine(containerId, datasets, labels, yMin, yMin2, yMax, yMax2, y2Label){
@@ -1873,9 +1908,32 @@ function renderVTab1(){
   svgLine('vc-items', qDS, tsL, 0, null, 10, null, null);
 }
 
+// ===== タブ③：インタラクティブグラフ =====
+var v2PlotMode = 'avg'; // 'avg' or 'ts'
+var v2CurrentMonth = null; // {year, month} or null（全期間）
+
+function v2SetPlot(mode, btn) {
+  v2PlotMode = mode;
+  document.querySelectorAll('#vctrl-plot2 .vperiod-btn').forEach(function(b){b.classList.remove('sel');});
+  if(btn) btn.classList.add('sel');
+  renderVTab2();
+}
+
+function v2MonthNav(dir) {
+  if(!v2CurrentMonth) {
+    var now = new Date();
+    v2CurrentMonth = {year: now.getFullYear(), month: now.getMonth()};
+  }
+  v2CurrentMonth.month += dir;
+  if(v2CurrentMonth.month > 11){ v2CurrentMonth.month=0; v2CurrentMonth.year++; }
+  if(v2CurrentMonth.month < 0){ v2CurrentMonth.month=11; v2CurrentMonth.year--; }
+  // 期間ボタンを全解除
+  document.querySelectorAll('#vpanel-2 .vperiod-btn[data-days]').forEach(function(b){b.classList.remove('sel');});
+  renderVTab2();
+}
+
 function onVPart2Change(){
   var part = document.getElementById('vpart-2').value;
-  // その部位のQ項目リストを取得
   var partRecs = vRecords.filter(function(r){ return r['部位']===part; });
   var qNums = [];
   partRecs.forEach(function(r){
@@ -1889,9 +1947,9 @@ function onVPart2Change(){
   var qSel = document.getElementById('vq-select');
   qSel.innerHTML = '<option value="__all__">全項目の平均</option>' +
     qNums.map(function(n){ return '<option value="'+n+'">Q'+n+': '+SFMPQ2_S[n-1]+'</option>'; }).join('');
-  // 性質・気象セレクトを表示
   document.getElementById('vctrl-q2').style.display = '';
   document.getElementById('vctrl-wx2').style.display = '';
+  document.getElementById('vctrl-plot2').style.display = '';
   renderVTab2();
 }
 
