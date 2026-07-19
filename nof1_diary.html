@@ -1948,8 +1948,9 @@ function onVPart2Change(){
   qNums.sort(function(a,b){return a-b;});
   var SFMPQ2_S=['ずきんずきん','ピーンと走る','刃物で刺される','鋭い','ひきつる','かじられる','焼けるような','うずく','重苦しい','触ると痛い','割れるような','くたくた','気分が悪い','恐ろしい','拷問のよう','電気が走る','凍てつく','貫くような','触れると痛む','むずがゆい','ちくちく','麻痺/痺れ'];
   var qSel = document.getElementById('vq-select');
-  qSel.innerHTML = '<option value="__all__">全項目の平均</option>' +
-    qNums.map(function(n){ return '<option value="'+n+'">Q'+n+': '+SFMPQ2_S[n-1]+'</option>'; }).join('');
+  qSel.innerHTML = '<option value="__all__">全項目の平均</option>'
+    + '<option value="__multi__">全項目を表示</option>'
+    + qNums.map(function(n){ return '<option value="'+n+'">Q'+n+': '+SFMPQ2_S[n-1]+'</option>'; }).join('');
   document.getElementById('vctrl-q2').style.display = 'flex';
   document.getElementById('vctrl-wx2').style.display = 'flex';
   document.getElementById('vctrl-plot2').style.display = 'flex';
@@ -2081,7 +2082,7 @@ function renderVTab2(){
 
   // NRS折れ線
   if(v2PlotMode==='ts'){
-    TS_ORDER.forEach(function(ts){
+    ['朝','昼','晩'].forEach(function(ts){
       var pts=plotPoints.map(function(p,i){return{p:p,i:i};}).filter(function(o){return o.p.ts===ts;});
       if(!pts.length) return;
       var col=TS_COLORS[ts]||'#6b8cce';
@@ -2090,21 +2091,33 @@ function renderVTab2(){
       ctx.stroke();
       pts.forEach(function(o){ctx.beginPath();ctx.arc(xp(o.i),yNrs(o.p.nrs),4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();});
     });
+    // 増悪時は折れ線なし・スター表示
+    plotPoints.forEach(function(p,i){
+      if(p.ts!=='増悪時') return;
+      ctx.fillStyle='#c0392b';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+      ctx.fillText('\u2726',xp(i),yNrs(p.nrs)+7);
+    });
+    // 朝昼晩・増悪時凡例
+    var legItems=[{l:'朝',c:'#f5a623'},{l:'昼',c:'#3ab8c8'},{l:'晩',c:'#7c6fd0'},{l:'増悪時★',c:'#c0392b'}];
+    var legSpacing=iW/4;
+    ctx.font='11px sans-serif';
+    legItems.forEach(function(item,i){
+      var x=PL+i*legSpacing,y=PT+iH+42;
+      ctx.beginPath();ctx.arc(x+5,y,5,0,Math.PI*2);ctx.fillStyle=item.c;ctx.fill();
+      ctx.fillStyle='#555';ctx.textAlign='left';ctx.fillText(item.l,x+14,y+4);
+    });
+    ctx.font='bold 11px sans-serif';
+    ctx.fillStyle='#555';ctx.textAlign='left';ctx.fillText('NRS：',PL,18);
+    ctx.fillStyle='#e07070';ctx.textAlign='right';ctx.fillText('● '+wxKey,W-PR,18);
   } else {
     ctx.beginPath();ctx.strokeStyle='#6b8cce';ctx.lineWidth=2.5;
     plotPoints.forEach(function(p,i){var x=xp(i),y=yNrs(p.nrs);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
     ctx.stroke();
     plotPoints.forEach(function(p,i){ctx.beginPath();ctx.arc(xp(i),yNrs(p.nrs),4,0,Math.PI*2);ctx.fillStyle='#6b8cce';ctx.fill();});
+    ctx.font='bold 11px sans-serif';
+    ctx.fillStyle='#6b8cce';ctx.textAlign='left';ctx.fillText('● '+nrsLabel,PL,18);
+    ctx.fillStyle='#e07070';ctx.textAlign='right';ctx.fillText('● '+wxKey,W-PR,18);
   }
-
-  // 凡例
-  ctx.font='11px sans-serif';
-  ctx.fillStyle='#6b8cce';
-  ctx.beginPath();ctx.moveTo(PL,16);ctx.lineTo(PL+18,16);ctx.strokeStyle='#6b8cce';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillText(nrsLabel,PL+22,20);
-  ctx.fillStyle='#e07070';
-  ctx.beginPath();ctx.moveTo(W-PR-60,16);ctx.lineTo(W-PR-42,16);ctx.strokeStyle='#e07070';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillText(wxKey.slice(0,10),W-PR-38,20);
 
   // ツールチップ
   canvas._pp=plotPoints;canvas._xp=xp;canvas._yNrs=yNrs;canvas._yWx=yWx;
