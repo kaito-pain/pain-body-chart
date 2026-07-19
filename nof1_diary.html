@@ -620,40 +620,13 @@
     </div>
     <div class="viewer-pid" id="viewer-pid"></div>
     <div class="vtabs">
-      <div class="vtab active" data-vtab="0">📈 経時変化</div>
-      <div class="vtab" data-vtab="1">🕐 時間帯別</div>
-      <div class="vtab" data-vtab="2">🌡️ 気象との関係</div>
-      <div class="vtab" data-vtab="3">📝 メモ</div>
+      <div class="vtab active" data-vtab="0">🌡️ 気象との関係</div>
+      <div class="vtab" data-vtab="1">📝 メモ</div>
     </div>
   </div>
   <div class="viewer-content">
     <!-- タブ① 経時変化 -->
     <div class="vpanel active" id="vpanel-0">
-      <div class="vctrl">
-        <div class="vctrl-label">部位：</div>
-        <select class="vctrl-select" id="vpart-0" onchange="renderVTab0()"></select>
-        <div class="vctrl-label">期間：</div>
-        <div class="vperiod-btns">
-          <button class="vperiod-btn sel" data-days="14" onclick="setVPeriod(this,0)">2週</button>
-          <button class="vperiod-btn" data-days="30" onclick="setVPeriod(this,0)">1ヶ月</button>
-          <button class="vperiod-btn" data-days="0" onclick="setVPeriod(this,0)">全期間</button>
-        </div>
-      </div>
-      <div class="vsummary" id="vsummary-0"></div>
-      <div class="vcard"><div class="vcard-title">📈 NRS経時変化（朝・昼・晩の各時点）</div><div id="vc-timeseries" class="svg-chart"></div></div>
-      <div class="vcard"><div class="vcard-title">📊 項目別NRS推移（1日平均）</div><div id="vc-subscale" class="svg-chart"></div></div>
-    </div>
-    <!-- タブ② 時間帯別 -->
-    <div class="vpanel" id="vpanel-1">
-      <div class="vctrl">
-        <div class="vctrl-label">部位：</div>
-        <select class="vctrl-select" id="vpart-1" onchange="renderVTab1()"></select>
-      </div>
-      <div class="vcard"><div class="vcard-title">🕐 朝・昼・晩 平均NRS（全期間・全性質平均）</div><div id="vc-timeslot" class="svg-chart"></div></div>
-      <div class="vcard"><div class="vcard-title">📋 痛みの性質別 時間帯変化（朝→昼→晩）</div><div id="vc-items" class="svg-chart"></div></div>
-    </div>
-    <!-- タブ③ 気象 -->
-    <div class="vpanel" id="vpanel-2">
       <!-- 月ナビ + 期間ボタン -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -714,13 +687,13 @@
     </div>
 
     <!-- タブ④：メモ一覧 -->
-    <div class="vpanel" id="vpanel-3">
+    <div class="vpanel" id="vpanel-1">
       <div class="vctrl">
         <div class="vctrl-label">期間：</div>
         <div class="vperiod-btns">
-          <button class="vperiod-btn sel" data-days="14" onclick="setVPeriod(this,3)">2週</button>
-          <button class="vperiod-btn" data-days="30" onclick="setVPeriod(this,3)">1ヶ月</button>
-          <button class="vperiod-btn" data-days="0" onclick="setVPeriod(this,3)">全期間</button>
+          <button class="vperiod-btn sel" data-days="14" onclick="setVPeriod(this,1)">2週</button>
+          <button class="vperiod-btn" data-days="30" onclick="setVPeriod(this,1)">1ヶ月</button>
+          <button class="vperiod-btn" data-days="0" onclick="setVPeriod(this,1)">全期間</button>
         </div>
       </div>
       <div id="memo-list-container"></div>
@@ -965,7 +938,8 @@ document.addEventListener('DOMContentLoaded', function(){
       var tab = parseInt(t.dataset.vtab);
       document.querySelectorAll('.vtab').forEach(function(el,i){ el.classList.toggle('active', i===tab); });
       document.querySelectorAll('.vpanel').forEach(function(el,i){ el.classList.toggle('active', i===tab); });
-      if(tab===3) renderVTab3();
+      if(tab===0) renderVTab2();
+      if(tab===1) renderVTab3();
     });
   });
 
@@ -1616,7 +1590,7 @@ function nextRecord(){
 var V_TS_COLORS={'朝':'#f5a623','昼':'#3ab8c8','晩':'#7c6fd0'};
 var V_SUB_COLORS=['#6b8cce','#e07070','#70b870','#e0a040'];
 var V_WX_COLOR='#e07070';
-var vRecords=[], vPeriodDays=[14,14,30,14], vCharts={};
+var vRecords=[], vPeriodDays=[30,14], vCharts={};
 
 // SVG折れ線グラフ
 function svgLine(containerId, datasets, labels, yMin, yMin2, yMax, yMax2, y2Label){
@@ -1792,15 +1766,14 @@ function doViewLogin(){
 function vInitSelects(){
   var parts={};vRecords.forEach(function(r){if(r['部位'])parts[r['部位']]=true;});
   var pArr=Object.keys(parts);
-  ['vpart-0','vpart-1','vpart-2'].forEach(function(id){var s=document.getElementById(id);if(s)s.innerHTML=pArr.map(function(p){return'<option value="'+p+'">'+p+'</option>';}).join('');});
+  var vp2=document.getElementById('vpart-2');if(vp2)vp2.innerHTML=pArr.map(function(p){return'<option value="'+p+'">'+p+'</option>';}).join('');
   // タブ③：初期状態で性質・気象セレクトを更新
   if(pArr.length) onVPart2Change();
-  renderVTab3();
 }
 function setVPeriod(btn,ti){
   document.querySelectorAll('#vpanel-'+ti+' .vperiod-btn').forEach(function(b){b.classList.remove('sel');});
   btn.classList.add('sel');vPeriodDays[ti]=parseInt(btn.dataset.days);
-  if(ti===0)renderVTab0();if(ti===2)renderVTab2();if(ti===3)renderVTab3();
+  if(ti===0)renderVTab2();if(ti===1)renderVTab3();
 }
 function vFilter(recs,days){
   if(!days)return recs;
@@ -2239,7 +2212,7 @@ function renderVTab2Multi(part, wxKey){
   var cardW=Math.floor((Math.min(screenW,container.offsetWidth||screenW)-14*(cols+1))/cols);
   cardW=Math.max(220,Math.min(cardW,440));
   var SW=cardW,SH=Math.round(SW*0.65);
-  var SPL=38,SPR=46,SPT=36,SPB=38;
+  var SPL=38,SPR=16,SPT=36,SPB=38;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2288,30 +2261,14 @@ function renderVTab2Multi(part, wxKey){
     ctx2.save();ctx2.translate(12,SPT+siH/2);ctx2.rotate(-Math.PI/2);
     ctx2.textAlign='center';ctx2.fillText('NRS',0,0);ctx2.restore();
 
-    // 右Y軸（気象）
-    ctx2.fillStyle='#e07070';ctx2.font='9px sans-serif';ctx2.textAlign='left';
-    [wxMin,Math.round((wxMin+wxMax)/2),wxMax].forEach(function(v){
-      ctx2.fillText(v,SPL+siW+5,yWx2(v)+3);
-    });
-    ctx2.save();ctx2.translate(SW-8,SPT+siH/2);ctx2.rotate(Math.PI/2);
-    ctx2.textAlign='center';ctx2.fillText(wxKey.slice(0,6),0,0);ctx2.restore();
+    // 右Y軸なし（気象削除）
 
     // X軸ラベル
     ctx2.fillStyle='#888';ctx2.font='9px sans-serif';ctx2.textAlign='center';
     if(pts.length>0) ctx2.fillText(pts[0].label,xp2(0),SH-8);
     if(pts.length>1) ctx2.fillText(pts[pts.length-1].label,xp2(pts.length-1),SH-8);
 
-    // 気象折れ線（点線・右軸）
-    if(wxVals.length>0){
-      ctx2.beginPath();ctx2.strokeStyle='rgba(224,112,112,0.55)';ctx2.lineWidth=1.5;ctx2.setLineDash([4,3]);
-      var first=true;
-      pts.forEach(function(p,i){
-        if(p.wx===null||p.wx===undefined){first=true;return;}
-        var x=xp2(i),y=yWx2(p.wx);
-        if(first){ctx2.moveTo(x,y);first=false;}else{ctx2.lineTo(x,y);}
-      });
-      ctx2.stroke();ctx2.setLineDash([]);
-    }
+    // 気象折れ線なし
 
     // NRS折れ線
     if(v2PlotMode==='ts'){
@@ -2352,7 +2309,7 @@ function renderVTab2Multi(part, wxKey){
         var p=best.p;
         tip.innerHTML='<div style="font-weight:700;color:#3a5fa0;margin-bottom:3px;">📅 '+p.label+'</div>'
           +'<div style="color:'+cv._col+';">NRS: <strong>'+p.nrs+'</strong></div>'
-          +(p.wx!==null&&p.wx!==undefined?'<div style="color:#e07070;">'+cv._wxKey.slice(0,12)+': <strong>'+p.wx+'</strong></div>':'');
+          ;
         var left=cv._xp2(best.i)/cv.width*rect.width+10;
         if(left+150>rect.width) left-=165;
         tip.style.left=left+'px';tip.style.top='36px';tip.style.display='block';
