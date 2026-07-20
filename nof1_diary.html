@@ -2133,7 +2133,7 @@ function renderVTab2(){
   }
 
   // Canvas描画
-  var PL=46,PR=60,PT=28,PB=72; // PB拡張：アイコンバー用
+  var PL=46,PR=60,PT=52,PB=56; // PT拡張：上部アイコンバー用
   var minPxPer=v2PlotMode==='ts'?24:30;
   // 画面幅に応じてグラフ幅を自動調整
   var containerW2 = (document.getElementById('v2-canvas').parentNode.clientWidth || 360) - 8;
@@ -2416,24 +2416,21 @@ function renderVTab2(){
       tip.style.display='none';
     }
   };
-  // ===== アイコンバー描画 =====
+  // ===== アイコンバー描画（グラフ上部）=====
   function drawIconBar(pts, mode){
-    // 日付ごとに外出/リハビリ/ブロック注射を集計
     var ICONS=[
-      {key:'外出',   icon:'🚶', color:'#5b9bd5'},
-      {key:'リハビリ',icon:'🏃', color:'#70b870'},
-      {key:'ブロック注射',icon:'💉', color:'#e07070'}
+      {key:'外出',   icon:'🚶'},
+      {key:'リハビリ',icon:'🏃'},
+      {key:'ブロック注射',icon:'💉'}
     ];
-    var dateIconMap={}; // {dateStr: {外出:true, リハビリ:true, ...}}
+    var dateIconMap={};
     vRecords.forEach(function(r){
       var ds=String(r['記録日']);
       if(!dateIconMap[ds]) dateIconMap[ds]={};
-      if(r['外出']==='あり')     dateIconMap[ds]['外出']=true;
-      if(r['リハビリ']==='あり') dateIconMap[ds]['リハビリ']=true;
+      if(r['外出']==='あり')         dateIconMap[ds]['外出']=true;
+      if(r['リハビリ']==='あり')     dateIconMap[ds]['リハビリ']=true;
       if(r['ブロック注射']==='あり') dateIconMap[ds]['ブロック注射']=true;
     });
-
-    // X座標の取得（モードによる）
     var dateXMap={};
     if(mode==='ts'){
       var tsDateSet={};
@@ -2445,14 +2442,13 @@ function renderVTab2(){
     } else {
       pts.forEach(function(p,i){dateXMap[p.dateStr]=xp(i);});
     }
-
-    // アイコン描画（縦にずらして重ならないよう配置）
+    // グラフ上部に配置（PT-4から上へ）
     ctx.font='11px sans-serif';ctx.textAlign='center';
     Object.keys(dateXMap).forEach(function(ds){
       var x=dateXMap[ds];
       var icons=ICONS.filter(function(ic){return dateIconMap[ds]&&dateIconMap[ds][ic.key];});
       icons.forEach(function(ic,idx){
-        var y=PT+iH+PB-8-(icons.length-1-idx)*14;
+        var y=PT-4-(icons.length-1-idx)*13;
         ctx.fillText(ic.icon,x,y);
       });
     });
@@ -2592,7 +2588,7 @@ function renderVTab2Multi(part, wxKey){
   var containerW=container.offsetWidth||Math.min(window.innerWidth||600,900);
   var SW=Math.max(300,containerW-20);
   var SH=Math.round(SW*0.28); // 横長
-  var SPL=44,SPR=50,SPT=28,SPB=44;
+  var SPL=44,SPR=50,SPT=48,SPB=40; // SPT拡張：上部アイコンバー用
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2799,7 +2795,7 @@ function renderVTab2Multi(part, wxKey){
         tip.style.left=tipLeft2+'px';tip.style.top='28px';tip.style.display='block';
       } else {tip.style.display='none';}
     });
-    // アイコンバー（全項目グラフ）
+    // アイコンバー（全項目グラフ）- グラフ上部に配置
     (function(){
       var ICONS2=[
         {key:'外出',   icon:'🚶'},
@@ -2810,16 +2806,17 @@ function renderVTab2Multi(part, wxKey){
       vRecords.forEach(function(r){
         var ds=String(r['記録日']);
         if(!dateIconMap2[ds]) dateIconMap2[ds]={};
-        if(r['外出']==='あり')       dateIconMap2[ds]['外出']=true;
-        if(r['リハビリ']==='あり')   dateIconMap2[ds]['リハビリ']=true;
+        if(r['外出']==='あり')         dateIconMap2[ds]['外出']=true;
+        if(r['リハビリ']==='あり')     dateIconMap2[ds]['リハビリ']=true;
         if(r['ブロック注射']==='あり') dateIconMap2[ds]['ブロック注射']=true;
       });
-      ctx2.font='10px sans-serif';ctx2.textAlign='center';
+      ctx2.font='9px sans-serif';ctx2.textAlign='center';
       allDates.forEach(function(ds){
         var x=xp2(ds);
         var icons=ICONS2.filter(function(ic){return dateIconMap2[ds]&&dateIconMap2[ds][ic.key];});
+        // グラフ上部（SPT-2から上に向かって配置）
         icons.forEach(function(ic,idx){
-          var y=SPT+siH+SPB-6-(icons.length-1-idx)*13;
+          var y=SPT-4-(icons.length-1-idx)*11;
           ctx2.fillText(ic.icon,x,y);
         });
       });
