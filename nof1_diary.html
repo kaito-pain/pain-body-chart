@@ -115,13 +115,13 @@
     .cal-nav-btn { background: #fff; border: 1.5px solid #c5d0e8; border-radius: 8px; width: 34px; height: 34px; font-size: 14px; color: #4a6fa5; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .cal-month-title { font-size: 20px; font-weight: 700; color: #3a5fa0; display: flex; align-items: center; gap: 12px; }
     .today-btn { background: #fff; border: 1px solid #b0c4e8; border-radius: 14px; padding: 3px 12px; font-size: 13px; color: #4a6fa5; cursor: pointer; }
-    .cal-body { padding: 12px 16px 16px; }
-    .cal-card { background: #fff; border-radius: 14px; padding: 10px 8px; box-shadow: 0 1px 4px rgba(100,130,200,0.08); }
+    .cal-body { padding: 6px 10px 8px; }
+    .cal-card { background: #fff; border-radius: 14px; padding: 6px 6px; box-shadow: 0 1px 4px rgba(100,130,200,0.08); max-width:420px; margin:0 auto; }
     .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); margin-bottom: 2px; }
     .cal-wd { text-align: center; font-size: 12px; font-weight: 600; padding: 6px 0; color: #666; }
     .cal-wd.sun { color: #e05050; } .cal-wd.sat { color: #5070d0; }
-    .cal-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
-    .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500; color: #333; border: 2px solid transparent; }
+    .cal-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; }
+    .cal-day { aspect-ratio: 1; display: flex; flex-direction:column; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: #333; border: 2px solid transparent; min-height:0; }
     .cal-day:hover:not(.empty) { background: #eef2ff; }
     .cal-day.today { border-color: #6b8cce; color: #3a5fa0; font-weight: 700; }
     .cal-day.selected { background: #6b8cce !important; color: white !important; border-color: #6b8cce; }
@@ -550,11 +550,17 @@
           </div>
         </div>
         <div class="daily-row">
-          <div><div class="daily-row-label">暑熱曝露</div><div class="daily-row-sub">暑い屋外環境への曝露</div></div>
+          <div><div class="daily-row-label">リハビリ</div><div class="daily-row-sub">本日のリハビリの有無</div></div>
           <div class="toggle-btns">
-            <button class="toggle-btn sel" data-group="heat" data-val="なし" onclick="selToggle(this)">なし</button>
-            <button class="toggle-btn" data-group="heat" data-val="短時間" onclick="selToggle(this)">短時間</button>
-            <button class="toggle-btn" data-group="heat" data-val="長時間" onclick="selToggle(this)">長時間</button>
+            <button class="toggle-btn sel" data-group="rehab" data-val="なし" onclick="selToggle(this)">なし</button>
+            <button class="toggle-btn" data-group="rehab" data-val="あり" onclick="selToggle(this)">あり</button>
+          </div>
+        </div>
+        <div class="daily-row">
+          <div><div class="daily-row-label">ブロック注射</div><div class="daily-row-sub">本日の注射治療の有無</div></div>
+          <div class="toggle-btns">
+            <button class="toggle-btn sel" data-group="block" data-val="なし" onclick="selToggle(this)">なし</button>
+            <button class="toggle-btn" data-group="block" data-val="あり" onclick="selToggle(this)">あり</button>
           </div>
         </div>
         </div>
@@ -1005,6 +1011,7 @@ function doLogin(){
 
 // ===== 観測所管理 =====
 var currentStation = null; // {id, name, dist}
+var calRecords = []; // カレンダー表示用記録データ
 
 function loadSavedStation() {
   try {
@@ -1086,13 +1093,15 @@ function updateStation() {
 function goCalendar(){
   var t=new Date();calYear=t.getFullYear();calMonth=t.getMonth();
   document.getElementById('cal-pid-badge').textContent='患者ID: '+patientId;
-  renderCal();showScreen('screen-cal');
-  // 保存済み観測所を読込、なければ自動取得
-  var hasSaved = loadSavedStation();
-  if (!hasSaved) {
-    // 初回：自動取得
-    updateStation();
-  }
+  // 記録済みアイコン表示のためgetRecordsを取得
+  var GAS_CAL='https://script.google.com/macros/s/AKfycbyjXpLLQuNHdajYTVO4k1gEsVYZNqRucXNEDBNJrrdscZIwmP6jOBaHHba_3np1otz-/exec';
+  fetch(GAS_CAL+'?patientId='+encodeURIComponent(patientId)+'&action=getRecords')
+    .then(function(r){return r.json();})
+    .then(function(d){calRecords=d.records||[];renderCal();})
+    .catch(function(){calRecords=[];renderCal();});
+  showScreen('screen-cal');
+  var hasSaved=loadSavedStation();
+  if(!hasSaved) updateStation();
 }
 
 // カレンダー
@@ -1101,6 +1110,13 @@ function renderCal(){
   document.getElementById('cal-month-label').textContent=calYear+'年 '+MONTH_NAMES[calMonth];
   var today=new Date(),ty=today.getFullYear(),tm=today.getMonth(),td=today.getDate();
   var first=new Date(calYear,calMonth,1).getDay(),last=new Date(calYear,calMonth+1,0).getDate(),prevLast=new Date(calYear,calMonth,0).getDate();
+  // 記録済みスロットを集計
+  var recSlots={};
+  calRecords.forEach(function(r){
+    var ds=String(r['記録日']);var ts=r['時間帯'];
+    if(!recSlots[ds])recSlots[ds]={};
+    if(ts)recSlots[ds][ts]=true;
+  });
   var html='';
   for(var i=0;i<first;i++){html+='<div class="cal-day other-month empty">'+(prevLast-first+i+1)+'</div>';}
   for(var d=1;d<=last;d++){
@@ -1108,7 +1124,18 @@ function renderCal(){
     var dow=(first+d-1)%7,cls='cal-day';
     if(!isSel){if(dow===0)cls+=' sun';if(dow===6)cls+=' sat';}
     if(isToday)cls+=' today';if(isSel)cls+=' selected';
-    html+='<div class="'+cls+'" onclick="selectDay('+d+')">'+d+'</div>';
+    var ds2=calYear+'/'+(calMonth+1<10?'0':'')+(calMonth+1)+'/'+(d<10?'0':'')+d;
+    var slots=recSlots[ds2]||{};
+    var icons='';
+    if(Object.keys(slots).length>0){
+      icons='<div style="display:flex;gap:1px;justify-content:center;flex-wrap:wrap;">';
+      if(slots['朝'])  icons+='<span style="font-size:6px;line-height:1;">🌅</span>';
+      if(slots['昼'])  icons+='<span style="font-size:6px;line-height:1;">☀️</span>';
+      if(slots['晩'])  icons+='<span style="font-size:6px;line-height:1;">🌙</span>';
+      if(slots['増悪時'])icons+='<span style="font-size:6px;line-height:1;">🆘</span>';
+      icons+='</div>';
+    }
+    html+='<div class="'+cls+'" onclick="selectDay('+d+')"><span>'+d+'</span>'+icons+'</div>';
   }
   var rem=(7-((first+last)%7))%7;for(var n=1;n<=rem;n++){html+='<div class="cal-day other-month empty">'+n+'</div>';}
   document.getElementById('cal-days').innerHTML=html;
@@ -1514,7 +1541,8 @@ function submitData(){
       patientId:patientId,recordedAt:dateStr,timeSlot:currentTimeSlot,parts:parts,
       sleep: currentTimeSlot==='朝' ? parseInt(document.getElementById('sleep-slider').value) : '',
       outing:      currentTimeSlot==='晩' ? getToggleVal('outing')      : '',
-    heatExposure: currentTimeSlot==='晩' ? getToggleVal('heat')         : '',
+    rehab:       currentTimeSlot==='晩' ? getToggleVal('rehab')        : '',
+      block:       currentTimeSlot==='晩' ? getToggleVal('block')        : '',
       regularMedsTaken:regularTaken,prnMedsTaken:prnTaken,
       prnCount:parseInt(document.getElementById('prn-count').value)||0,
       impact:currentTimeSlot==='晩' ? getToggleVal('impact') : '',
@@ -1583,9 +1611,12 @@ function nextRecord(){
   var outingDefault=document.querySelector('.toggle-btn[data-group="outing"][data-val="あり"]');
   if(outingDefault) outingDefault.classList.add('sel');
 
-  document.querySelectorAll('.toggle-btn[data-group="heat"]').forEach(function(b){b.classList.remove('sel');});
-  var heatDefault=document.querySelector('.toggle-btn[data-group="heat"][data-val="なし"]');
-  if(heatDefault) heatDefault.classList.add('sel');
+  document.querySelectorAll('.toggle-btn[data-group="rehab"]').forEach(function(b){b.classList.remove('sel');});
+  var rehabDefault=document.querySelector('.toggle-btn[data-group="rehab"][data-val="なし"]');
+  if(rehabDefault) rehabDefault.classList.add('sel');
+  document.querySelectorAll('.toggle-btn[data-group="block"]').forEach(function(b){b.classList.remove('sel');});
+  var blockDefault=document.querySelector('.toggle-btn[data-group="block"][data-val="なし"]');
+  if(blockDefault) blockDefault.classList.add('sel');
 
   document.querySelectorAll('.toggle-btn[data-group="impact"]').forEach(function(b){b.classList.remove('sel');});
   var impactDefault=document.querySelector('.toggle-btn[data-group="impact"][data-val="記録なし"]');
