@@ -441,10 +441,79 @@
       <div class="cal-pid-badge" id="cal-pid-badge"></div>
 
       <!-- 観測所選択 -->
-      <div id="station-bar" style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 4px rgba(100,130,200,0.1);">
-        <span style="font-size:13px;color:#555;font-weight:600;">📍 気象観測所：</span>
-        <span id="station-label" style="font-size:13px;color:#3a5fa0;font-weight:700;flex:1;">取得中...</span>
-        <button id="station-update-btn" onclick="updateStation()" style="padding:6px 12px;border-radius:8px;border:1.5px solid #6b8cce;background:#eef2ff;color:#3a5fa0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 現在地で更新</button>
+      <div id="station-bar" style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(100,130,200,0.1);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;color:#555;font-weight:600;">📍 気象観測所：</span>
+          <span id="station-label" style="font-size:13px;color:#3a5fa0;font-weight:700;flex:1;">取得中...</span>
+          <button id="station-update-btn" onclick="updateStation()" style="padding:6px 12px;border-radius:8px;border:1.5px solid #6b8cce;background:#eef2ff;color:#3a5fa0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 現在地で更新</button>
+        </div>
+        <!-- GPS失敗時の手動選択UI -->
+        <div id="station-manual" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #eef2ff;">
+          <div style="font-size:12px;color:#e07070;margin-bottom:6px;">⚠️ GPS取得できませんでした。お近くの観測所を選択してください。</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <select id="station-manual-select" style="flex:1;padding:6px 8px;border-radius:8px;border:1.5px solid #c5d0e8;font-size:12px;color:#333;background:#fff;">
+              <option value="">-- 観測所を選択 --</option>
+              <optgroup label="北海道">
+                <option value="14163|札幌|43.0595|141.3386">札幌</option>
+                <option value="20336|旭川|43.7667|142.3667">旭川</option>
+                <option value="51106|函館|41.8167|140.75">函館</option>
+              </optgroup>
+              <optgroup label="東北">
+                <option value="34392|仙台|38.2617|140.8967">仙台</option>
+                <option value="31312|青森|40.8233|140.7733">青森</option>
+                <option value="33472|盛岡|39.6950|141.1683">盛岡</option>
+                <option value="36236|秋田|39.7167|140.1">秋田</option>
+                <option value="37606|山形|38.2550|140.3383">山形</option>
+                <option value="36145|福島|37.7600|140.4733">福島</option>
+              </optgroup>
+              <optgroup label="関東">
+                <option value="44132|東京|35.6894|139.6917">東京</option>
+                <option value="45147|横浜|35.4333|139.65">横浜</option>
+                <option value="43056|さいたま|35.8614|139.6456">さいたま</option>
+                <option value="40201|千葉|35.6050|140.1233">千葉</option>
+                <option value="42251|宇都宮|36.5500|139.8717">宇都宮</option>
+                <option value="43276|水戸|36.3783|140.4767">水戸</option>
+                <option value="46106|前橋|36.3917|139.065">前橋</option>
+              </optgroup>
+              <optgroup label="中部">
+                <option value="51076|新潟|37.9117|139.0233">新潟</option>
+                <option value="54232|名古屋|35.1667|136.9667">名古屋</option>
+                <option value="50331|長野|36.6617|138.195">長野</option>
+                <option value="50446|松本|36.2433|137.9717">松本</option>
+                <option value="50066|富山|36.7|137.2133">富山</option>
+                <option value="56036|金沢|36.5783|136.6333">金沢</option>
+                <option value="55102|福井|36.0617|136.2233">福井</option>
+                <option value="49142|静岡|34.9733|138.3883">静岡</option>
+              </optgroup>
+              <optgroup label="近畿">
+                <option value="62078|大阪|34.6833|135.5167">大阪</option>
+                <option value="61286|京都|35.0117|135.73">京都</option>
+                <option value="62091|神戸|34.7|135.1667">神戸</option>
+                <option value="63518|奈良|34.6850|135.8333">奈良</option>
+                <option value="65042|和歌山|34.2283|135.1667">和歌山</option>
+                <option value="60156|大津|35.0067|135.8683">大津</option>
+              </optgroup>
+              <optgroup label="中国・四国">
+                <option value="67437|広島|34.3983|132.4733">広島</option>
+                <option value="67137|岡山|34.6617|133.9167">岡山</option>
+                <option value="72086|高松|34.35|134.05">高松</option>
+                <option value="74181|高知|33.5567|133.5483">高知</option>
+                <option value="71456|松山|33.85|132.7833">松山</option>
+              </optgroup>
+              <optgroup label="九州・沖縄">
+                <option value="82182|福岡|33.5833|130.3833">福岡</option>
+                <option value="82146|北九州|33.8833|130.8833">北九州</option>
+                <option value="84096|熊本|32.8117|130.7067">熊本</option>
+                <option value="83216|長崎|32.7333|129.8667">長崎</option>
+                <option value="85142|大分|33.2333|131.6167">大分</option>
+                <option value="86141|宮崎|31.9117|131.4233">宮崎</option>
+                <option value="88317|鹿児島|31.5583|130.5583">鹿児島</option>
+                <option value="91197|那覇|26.2033|127.685">那覇</option>
+              </optgroup>
+            </select>
+            <button onclick="applyManualStation()" style="padding:6px 14px;border-radius:8px;border:none;background:#6b8cce;color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">設定</button>
+          </div>
+        </div>
       </div>
 
       <div class="cal-month-row">
@@ -1062,31 +1131,50 @@ function renderStationBar() {
   }
 }
 
+function showManualStation(){ document.getElementById('station-manual').style.display=''; }
+function hideManualStation(){ document.getElementById('station-manual').style.display='none'; }
+
+function applyManualStation(){
+  var sel=document.getElementById('station-manual-select');
+  if(!sel||!sel.value) return;
+  var parts=sel.value.split('|');
+  var station={id:parts[0], name:parts[1], lat:parseFloat(parts[2]), lon:parseFloat(parts[3]), dist:0};
+  saveStation(station);
+  hideManualStation();
+  var label=document.getElementById('station-label');
+  if(label){ label.textContent=station.name+'（手動設定）'; label.style.color='#3a5fa0'; }
+}
+
 function updateStation() {
   var label = document.getElementById('station-label');
   var btn = document.getElementById('station-update-btn');
   if (label) { label.textContent = '取得中...'; label.style.color = '#888'; }
   if (btn) { btn.disabled = true; btn.textContent = '取得中...'; }
+  hideManualStation();
 
   getPosition().then(function(pos) {
     if (!pos) {
-      if (label) { label.textContent = 'GPS取得失敗'; label.style.color = '#e07070'; }
+      if (label) { label.textContent = 'GPS取得できませんでした'; label.style.color = '#e07070'; }
       if (btn) { btn.disabled = false; btn.textContent = '🔄 再試行'; }
+      showManualStation();
       return;
     }
     return findNearestStation(pos.lat, pos.lon).then(function(station) {
       if (!station) {
-        if (label) label.textContent = '観測所が見つかりません';
+        if (label) { label.textContent = '観測所が見つかりません'; label.style.color = '#e07070'; }
         if (btn) { btn.disabled = false; btn.textContent = '🔄 再試行'; }
+        showManualStation();
         return;
       }
       saveStation(station);
-      if (btn) { btn.disabled = false; }
-      console.log('[気象] 観測所取得完了:', station.id, station.name, 'lat:', station.lat, 'lon:', station.lon);
+      hideManualStation();
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 現在地で更新'; }
+      console.log('[気象] 観測所取得完了:', station.id, station.name);
     });
   }).catch(function() {
-    if (label) label.textContent = '取得エラー';
+    if (label) { label.textContent = 'GPS取得エラー'; label.style.color = '#e07070'; }
     if (btn) { btn.disabled = false; btn.textContent = '🔄 再試行'; }
+    showManualStation();
   });
 }
 
@@ -2584,11 +2672,13 @@ function renderVTab2Multi(part, wxKey){
   wrap.style.cssText='display:flex;flex-direction:column;gap:16px;margin-top:8px;';
   container.appendChild(wrap);
 
-  // グラフサイズ：コンテナ幅いっぱい
-  var containerW=container.offsetWidth||Math.min(window.innerWidth||600,900);
-  var SW=Math.max(300,containerW-20);
-  var SH=Math.round(SW*0.28); // 横長
-  var SPL=44,SPR=50,SPT=48,SPB=40; // SPT拡張：上部アイコンバー用
+  // グラフサイズ：日付数に応じて横幅を確保（横スクロール対応）
+  var screenW=window.innerWidth||360;
+  var minCardW=Math.max(screenW-24, 340); // 最低でも画面幅
+  var perDate=Math.max(28, Math.floor(minCardW/Math.max(allDates.length,1)));
+  var SW=Math.max(minCardW, 60+(allDates.length-1)*perDate); // 日付数×間隔
+  var SH=Math.round(Math.max(screenW-24,300)*0.30); // 高さは画面幅基準
+  var SPL=44,SPR=50,SPT=48,SPB=40;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
   qNums.forEach(function(q,qi){
@@ -2616,7 +2706,7 @@ function renderVTab2Multi(part, wxKey){
 
     // カード
     var card=document.createElement('div');
-    card.style.cssText='background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 1px 6px rgba(100,130,200,0.12);position:relative;';
+    card.style.cssText='background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 1px 6px rgba(100,130,200,0.12);position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;';
     wrap.appendChild(card);
 
     // タイトル
@@ -2627,7 +2717,7 @@ function renderVTab2Multi(part, wxKey){
 
     var cv=document.createElement('canvas');
     cv.width=SW;cv.height=SH;
-    cv.style.cssText='display:block;width:100%;height:auto;';
+    cv.style.cssText='display:block;min-width:'+SW+'px;height:'+SH+'px;';
     card.appendChild(cv);
 
     var tip=document.createElement('div');
