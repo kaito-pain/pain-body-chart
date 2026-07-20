@@ -2677,7 +2677,10 @@ function renderVTab2Multi(part, wxKey){
   var minCardW=Math.max(screenW-24, 340); // 最低でも画面幅
   var perDate=Math.max(28, Math.floor(minCardW/Math.max(allDates.length,1)));
   var SW=Math.max(minCardW, 60+(allDates.length-1)*perDate); // 日付数×間隔
-  var SH=Math.max(220, Math.round(screenW*0.55)); // スマホでも十分な高さ
+  // PC（900px以上）は横長・スマホは縦長
+  var SH = screenW >= 900
+    ? Math.round(SW * 0.22)          // PC：横幅の22%（横長）
+    : Math.max(220, Math.round(screenW * 0.55)); // スマホ：画面幅の55%
   var SPL=44,SPR=50,SPT=48,SPB=44;
   var siW=SW-SPL-SPR,siH=SH-SPT-SPB;
 
