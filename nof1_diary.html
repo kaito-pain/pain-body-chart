@@ -1096,9 +1096,17 @@ function goCalendar(){
   // 記録済みアイコン表示のためgetRecordsを取得
   var GAS_CAL='https://script.google.com/macros/s/AKfycbyjXpLLQuNHdajYTVO4k1gEsVYZNqRucXNEDBNJrrdscZIwmP6jOBaHHba_3np1otz-/exec';
   fetch(GAS_CAL+'?patientId='+encodeURIComponent(patientId)+'&action=getRecords')
-    .then(function(r){return r.json();})
-    .then(function(d){calRecords=d.records||[];renderCal();})
-    .catch(function(){calRecords=[];renderCal();});
+    .then(function(resp){return resp.json();})
+    .then(function(d){
+      calRecords=d.records||[];
+      renderCal(); // データ取得後に再描画
+    })
+    .catch(function(err){
+      console.log('calRecords fetch error:', err);
+      calRecords=[];
+      renderCal();
+    });
+  renderCal(); // 初期表示（データなし）
   showScreen('screen-cal');
   var hasSaved=loadSavedStation();
   if(!hasSaved) updateStation();
@@ -1113,7 +1121,11 @@ function renderCal(){
   // 記録済みスロットを集計
   var recSlots={};
   calRecords.forEach(function(r){
-    var ds=String(r['記録日']);var ts=r['時間帯'];
+    // 日付を正規化（2026/05/01→2026/5/1 に統一）
+    var rawDs=String(r['記録日']);
+    var parts=rawDs.replace(/-/g,'/').split('/');
+    var ds=parseInt(parts[0])+'/'+(parseInt(parts[1]))+'/'+(parseInt(parts[2]));
+    var ts=r['時間帯'];
     if(!recSlots[ds])recSlots[ds]={};
     if(ts)recSlots[ds][ts]=true;
   });
@@ -1124,7 +1136,7 @@ function renderCal(){
     var dow=(first+d-1)%7,cls='cal-day';
     if(!isSel){if(dow===0)cls+=' sun';if(dow===6)cls+=' sat';}
     if(isToday)cls+=' today';if(isSel)cls+=' selected';
-    var ds2=calYear+'/'+(calMonth+1<10?'0':'')+(calMonth+1)+'/'+(d<10?'0':'')+d;
+    var ds2=calYear+'/'+(calMonth+1)+'/'+d; // Sheetsの日付形式に合わせてゼロパディングなし
     var slots=recSlots[ds2]||{};
     var icons='';
     if(Object.keys(slots).length>0){
