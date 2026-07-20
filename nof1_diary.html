@@ -741,7 +741,7 @@
 </div>
 
 <script>
-var GAS='https://script.google.com/macros/s/AKfycbyjXpLLQuNHdajYTVO4k1gEsVYZNqRucXNEDBNJrrdscZIwmP6jOBaHHba_3np1otz-/exec';
+var GAS='https://script.google.com/macros/s/AKfycbzlwulqEx5BY62t6ormMsisgs4FrSfVjfPJ60mv6dQ4U2s8Rl4ZDy4O5Nm6dCvrEk77/exec';
 var STAFF_PW='mcsi';
 var SFMPQ2=[
   {num:1,label:'ずきんずきんする痛み'},{num:2,label:'ピーンと走る痛み'},{num:3,label:'刃物で突き刺されるような痛み'},
@@ -1094,7 +1094,7 @@ function goCalendar(){
   var t=new Date();calYear=t.getFullYear();calMonth=t.getMonth();
   document.getElementById('cal-pid-badge').textContent='患者ID: '+patientId;
   // 記録済みアイコン表示のためgetRecordsを取得
-  var GAS_CAL='https://script.google.com/macros/s/AKfycbyjXpLLQuNHdajYTVO4k1gEsVYZNqRucXNEDBNJrrdscZIwmP6jOBaHHba_3np1otz-/exec';
+  var GAS_CAL='https://script.google.com/macros/s/AKfycbzlwulqEx5BY62t6ormMsisgs4FrSfVjfPJ60mv6dQ4U2s8Rl4ZDy4O5Nm6dCvrEk77/exec';
   fetch(GAS_CAL+'?patientId='+encodeURIComponent(patientId)+'&action=getRecords')
     .then(function(resp){return resp.json();})
     .then(function(d){
